@@ -1,8 +1,9 @@
-const { Server } = require("socket.io");
-const userSocketMap = {};
-const whiteList = [process.env.CLIENT2_URL, 'http://localhost:5173'];
+import { Server } from "socket.io";
 
-const initializeSocket = (server) => {
+const userSocketMap = {};
+const whiteList = [process.env.CLIENT2_URL, "http://localhost:5173"];
+
+export const initializeSocket = (server) => {
   const io = new Server(server, {
     cors: {
       origin: function (origin, callback) {
@@ -37,9 +38,4 @@ const initializeSocket = (server) => {
   return io;
 };
 
-const getUserSocketMap = () => userSocketMap;
-
-module.exports = {
-  initializeSocket,
-  getUserSocketMap,
-};
+export const getUserSocketMap = () => userSocketMap;

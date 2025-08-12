@@ -49,10 +49,10 @@ export default (sequelize, DataTypes) => {
       foreignKey: "admin_id",
       as: "auditLogs",
     });
-    // Admin.hasMany(models.Notification, {
-    //   foreignKey: "created_by",
-    //   as: "createdNotifications",
-    // });
+    Admin.hasMany(models.Notification, {
+      foreignKey: "created_by",
+      as: "createdNotifications",
+    });
   };
 
   return Admin;

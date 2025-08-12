@@ -9,6 +9,7 @@ import ShiftModel from "./shift.js";
 import StaffDocumentModel from "./StaffDocument.js";
 import ShiftAssignmentModel from "./shiftTemplate.js";
 import AuditLogModel from "./auditLog.js";
+import NotificationModel from "./Notification.js";
 
 // Initialize models
 const Admin = AdminModel(sequelize, DataTypes);
@@ -18,6 +19,7 @@ const Shift = ShiftModel(sequelize, DataTypes);
 const StaffDocument = StaffDocumentModel(sequelize, DataTypes);
 const ShiftAssignment = ShiftAssignmentModel(sequelize, DataTypes);
 const AuditLog = AuditLogModel(sequelize, DataTypes);
+const Notification = NotificationModel(sequelize, DataTypes);
 
 // Create db object
 const db = {
@@ -29,6 +31,7 @@ const db = {
   StaffDocument,
   ShiftAssignment,
   AuditLog,
+  Notification
 };
 
 // Setup associations

@@ -4,7 +4,7 @@ import {
   createShiftTemplate,
   getAllTemplates,
   deleteTemplate
-} from "../controllers/shiftTemplateControllers";
+} from "../controllers/shiftTemplateControllers.js";
 
 const router = express.Router();
 

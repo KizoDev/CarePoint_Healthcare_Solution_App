@@ -1,4 +1,3 @@
-
 export default (sequelize, DataTypes) => {
   const Notification = sequelize.define("Notification", {
     NotificationId: {
@@ -15,23 +14,31 @@ export default (sequelize, DataTypes) => {
       allowNull: false,
     },
     type: {
-      type: DataTypes.ENUM("shift", "document", "general"),
+      type: DataTypes.ENUM("shift", "document", "general", "system", "client"),
       defaultValue: "general",
     },
-    staffId: {
+    recipientId: {
       type: DataTypes.UUID,
-      allowNull: true,
+      allowNull: false,
     },
+    recipientType: {
+      type: DataTypes.ENUM("staff", "admin", "client"),
+      allowNull: false,
+    },
+    isRead: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+    }
   }, {
     timestamps: true,
     underscored: true,
   });
 
   Notification.associate = (models) => {
-    Notification.belongsTo(models.Staff, { foreignKey: "staff_id", as: "staff" });
+    Notification.belongsTo(models.Staff, { foreignKey: "recipientId", constraints: false });
+    Notification.belongsTo(models.Admin, { foreignKey: "recipientId", constraints: false });
+    Notification.belongsTo(models.Client, { foreignKey: "recipientId", constraints: false });
   };
 
   return Notification;
 };
-
-

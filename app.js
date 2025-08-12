@@ -8,6 +8,10 @@ import http from "http";
 import path from "path";
 import { fileURLToPath } from "url";
 
+import db from "./models/index.js";
+await db.sequelize.sync({ alter: true }); 
+
+
 // Load env vars
 dotenv.config();
 
@@ -15,18 +19,20 @@ dotenv.config();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Initialize app and server
+// Initialize app and serve
 const app = express();
 const server = http.createServer(app);
 
-// Initialize socket
-//import { initializeSocket } from "./config/socket.js";
-// const io = initializeSocket(server);
-// if (io) {
-//   console.log("Socket.io initialized successfully");
-// } else {
-//   console.error("Socket.io initialization failed");
-// }
+//Initialize socket
+import { initializeSocket, getUserSocketMap } from "./config/socket.js";
+
+//import  {initializeSocket}  from "./config/socket.js";
+const io = initializeSocket(server);
+if (io) {
+  console.log("Socket.io initialized successfully");
+} else {
+  console.error("Socket.io initialization failed");
+}
 
 // Initialize models
 import "./models/index.js";
@@ -67,47 +73,38 @@ import adminRoutes from "./routes/AdminRoute.js";
 import staffRoutes from "./routes/staffRoute.js";
 import clientRoutes from "./routes/clientRoute.js";
 import shiftRoutes from "./routes/shiftRoute.js";
-//import notificationRoutes from "./routes/notificationRoutes.js";
+import notificationRoutes from "./routes/notificationRoutes.js";
 import auditLogRoutes from "./routes/auditRoute.js";
-//import shiftTemplateRoutes from "./routes/shiftTemplateRoutes.js";
+import shiftTemplateRoutes from "./routes/shiftTemplate.js";
 
 // Error Handlers
-//import errorHandler from "./error/errorHandler.js";
-//import notFoundError from "./error/notFoundError.js";
+import errorHandler from "./error/errorHandler.js";
+import notFoundError from "./error/notFoundError.js";
 
 // Use routes
 
-app.use("/api/carepoint/admin", adminRoutes);
-app.use("/api/carepoint/staff", staffRoutes);
-app.use("/api/carepoint/client", clientRoutes);
-app.use("/api/carepoint/shift", shiftRoutes);
-//app.use("/api/carepoint/notification", notificationRoutes);
-app.use("/api/carepoint/audit", auditLogRoutes);
-//app.use("/api/carepoint/template", shiftTemplateRoutes);
+app.use("/carepoint/admin", adminRoutes);
+app.use("/carepoint/staff", staffRoutes);
+app.use("/carepoint/client", clientRoutes);
+app.use("/carepoint/shift", shiftRoutes);
+app.use("/carepoint/notification", notificationRoutes);
+app.use("/carepoint/audit", auditLogRoutes);
+app.use("/carepoint/template", shiftTemplateRoutes);
 
 // Swagger UI
 //app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
-// Logo route
-// app.get("/logo", (req, res) => {
-//   res.sendFile(path.join(__dirname, "photo", "logo.PNG"), (err) => {
-//     if (err) {
-//       res.status(err.status).end();
-//     } else {
-//       console.log("Sent:", "logo.PNG");
-//     }
-//   });
-// });
+
 
 // 404 Handler
-//app.use(notFoundError);
+app.use(notFoundError);
 
 // Global Error Handler
-//app.use(errorHandler);
+app.use(errorHandler);
 
-// Attach socket to app
-//app.set("io", io);
-//
+//Attach socket to app
+app.set("io", io);
+app.set('userSocketMap', getUserSocketMap());
 // Cron job to ping site every 30 mins
 cron.schedule("*/30 * * * *", async () => {
   try {
