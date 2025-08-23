@@ -65,7 +65,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cors(corsOptions));
 app.use(morgan("tiny"));
-app.use("/photo", express.static(path.join(__dirname, "photo")));
+//app.use("/photo", express.static(path.join(__dirname, "photo")));
 
 // Routes
 

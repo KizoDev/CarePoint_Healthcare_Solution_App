@@ -1,66 +1,46 @@
+// controllers/notificationController.js
 import db from "../models/index.js";
-
 const { Notification, Staff, Client } = db;
 
-// Create a notification
-export const createNotification = async (req, res) => {
-  try {
-    const { title, message, type, staffId, clientId } = req.body;
-
-    const notification = await Notification.create({
-      title,
-      message,
-      type,
-      staffId: staffId || null,
-      clientId: clientId || null,
-    });
-
-    // Emit real-time notification
-    const io = req.app.get("io");
-    if (io) {
-      io.emit("newNotification", notification); // broadcast to all
-      if (staffId) io.to(staffId).emit("newNotification", notification); // targeted
-      if (clientId) io.to(clientId).emit("newNotification", notification); // targeted
-    }
-
-    res.status(201).json({
-      message: "Notification created successfully",
-      notification,
-    });
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-};
-
-// Get all notifications
+// Get notifications for a specific recipient
 export const getNotifications = async (req, res) => {
   try {
+    const { userId, role } = req.params;       // role can be 'staff' or 'client'
+
+    const where = {};
+    if (role === "staff") where.staffId = userId;
+    if (role === "client") where.clientId = userId;
+
     const notifications = await Notification.findAll({
+      where,
       order: [["createdAt", "DESC"]],
       include: [
-        { model: Staff, as: "staff" },
-        { model: Client, as: "client" },
+        { model: Staff, as: "staff", attributes: ["id", "name"] },
+        { model: Client, as: "client", attributes: ["id", "name"] },
       ],
     });
+
     res.status(200).json(notifications);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: "Failed to load notifications", error });
   }
 };
 
-// Mark notification as read
+// Mark a notification as read
 export const markAsRead = async (req, res) => {
   try {
-    const { id } = req.params;
+    const { id } = req.params; // notification ID
     const notification = await Notification.findByPk(id);
 
     if (!notification) {
       return res.status(404).json({ message: "Notification not found" });
     }
 
-    await notification.update({ read: true });
-    res.status(200).json({ message: "Notification marked as read" });
+    notification.read = true;
+    await notification.save();
+
+    res.status(200).json({ message: "Notification marked as read", notification });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: "Failed to update notification", error });
   }
 };

@@ -1,11 +1,13 @@
 import db from "../models/index.js";
-
-const { Client, Shift } = db;
+const { Client, Shift, Notification } = db;
 
 // Create a new client
 export const createClient = async (req, res) => {
   try {
     const client = await Client.create(req.body);
+
+    // Optional: If you want to notify admins later, you can add Notification.create here.
+
     res.status(201).json({ message: "Client created successfully", data: client });
   } catch (error) {
     res.status(500).json({ message: "Failed to create client", error });
@@ -41,9 +43,33 @@ export const updateClient = async (req, res) => {
     const { id } = req.params;
     const [updated] = await Client.update(req.body, { where: { id } });
 
-    if (!updated) return res.status(404).json({ message: "Client not found or no change made" });
+    if (!updated) {
+      return res.status(404).json({ message: "Client not found or no change made" });
+    }
 
     const updatedClient = await Client.findByPk(id);
+
+    // 1) Find staff assigned to this client's shifts
+    const shifts = await Shift.findAll({ where: { clientId: id } });
+    const uniqueStaffIds = [...new Set(shifts.map((shift) => shift.staffId).filter(Boolean))];
+
+    const io = req.app.get("io");
+
+    // 2) For each staff: DB + realtime emit
+    for (const staffId of uniqueStaffIds) {
+      await Notification.create({
+        title: "Client Updated",
+        message: `Client ${updatedClient.name} was updated.`,
+        type: "client",
+        staffId,
+      });
+      if (io) {
+        io.to(`user_${staffId}`).emit("clientUpdated", {
+          message: `Client ${updatedClient.name} information has been updated.`,
+        });
+      }
+    }
+
     res.json({ message: "Client updated successfully", data: updatedClient });
   } catch (error) {
     res.status(500).json({ message: "Failed to update client", error });
@@ -58,6 +84,26 @@ export const deleteClient = async (req, res) => {
 
     if (!deleted) return res.status(404).json({ message: "Client not found" });
 
+    // Find staff who were handling that client
+    const shifts = await Shift.findAll({ where: { clientId: id } });
+    const uniqueStaffIds = [...new Set(shifts.map((shift) => shift.staffId).filter(Boolean))];
+
+    const io = req.app.get("io");
+
+    for (const staffId of uniqueStaffIds) {
+      await Notification.create({
+        title: "Client Removed",
+        message: "A client associated with your shifts has been removed.",
+        type: "client",
+        staffId,
+      });
+      if (io) {
+        io.to(`user_${staffId}`).emit("clientRemoved", {
+          message: "A client assigned to you has been removed.",
+        });
+      }
+    }
+
     res.json({ message: "Client deleted successfully" });
   } catch (error) {
     res.status(500).json({ message: "Failed to delete client", error });
@@ -70,8 +116,8 @@ export const getClientShiftHistory = async (req, res) => {
     const { clientId } = req.params;
 
     const shifts = await Shift.findAll({
-      where: { client_id: clientId },
-      order: [["date", "DESC"]],
+      where: { clientId: clientId },
+      order: [["start_time", "DESC"]],
     });
 
     res.json({ message: "Shift history retrieved", data: shifts });

@@ -4,27 +4,33 @@ import {
   updateShift,
   deleteShift,
   assignStaffToShift,
-  filterShifts
+  filterShifts,
+  getAllShifts,
+  getSingleShift
 } from "../controllers/shiftController.js";
 
-import  authMiddleware  from "../middleware/authMiddleware.js";
-import  {roleMiddleware}  from "../middleware/roleMiddleware.js";
+import authMiddleware from "../middleware/authMiddleware.js";
+import { roleMiddleware } from "../middleware/roleMiddleware.js";
 
 const router = express.Router();
 
-// All routes below require authentication
+// All shift routes require login
 router.use(authMiddleware);
 
-// All authenticated admins can view and filter shifts
-router.get("/", filterShifts);
+// Public fetch:
+router.get("/all", getAllShifts); // All shifts for admin users
+router.get("/", filterShifts);   // Filter with query
+router.get("/:id", getSingleShift);
+
+// Create / Update / Delete (any admin):
 router.post("/", createShift);
 router.put("/:id", updateShift);
 router.delete("/:id", deleteShift);
 
-// Only super_admin and scheduler can assign staff
+// Assign staff (restricted)
 router.post(
   "/assign",
-  roleMiddleware("super_admin", "scheduler"),
+  roleMiddleware(["super_admin", "scheduler"]),
   assignStaffToShift
 );
 

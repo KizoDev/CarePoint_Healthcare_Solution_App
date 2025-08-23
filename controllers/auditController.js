@@ -1,40 +1,74 @@
+// controllers/auditController.js
 import db from '../models/index.js';
+import { Op } from 'sequelize';
 
 const { AuditLog, Admin } = db;
 
-// GET all logs with optional filters
+// GET /api/audit-logs
+// Query params: user (admin_id), module, action, startDate, endDate, page, limit
 export const getAuditLogs = async (req, res) => {
   try {
-    const { user, module, action, startDate, endDate, page = 1, limit = 10 } = req.query;
+    const {
+      user,         // admin_id
+      module,
+      action,
+      startDate,
+      endDate,
+      page = 1,
+      limit = 10,
+    } = req.query;
+
+    const pageNum = Number.parseInt(page, 10) || 1;
+    const limitNum = Number.parseInt(limit, 10) || 10;
+    const offset = (pageNum - 1) * limitNum;
 
     const where = {};
-    if (user) where.admin_id = user;
-    if (module) where.module = module;
-    if (action) where.action = action;
-    if (startDate && endDate) {
-      where.timestamp = {
-        [db.Sequelize.Op.between]: [new Date(startDate), new Date(endDate)],
-      };
-    }
 
-    const offset = (page - 1) * limit;
+    if (user) where.admin_id = user;
+
+    // Optional: case-insensitive filtering (Postgres)
+    if (module) where.module = { [Op.iLike]: `%${module}%` };
+    if (action) where.action = { [Op.iLike]: `%${action}%` };
+
+    // Date filters
+    const start = startDate ? new Date(startDate) : null;
+    const end = endDate ? new Date(endDate) : null;
+
+    if (start && !isNaN(start.getTime()) && end && !isNaN(end.getTime())) {
+      where.timestamp = { [Op.between]: [start, end] };
+    } else if (start && !isNaN(start.getTime())) {
+      where.timestamp = { [Op.gte]: start };
+    } else if (end && !isNaN(end.getTime())) {
+      where.timestamp = { [Op.lte]: end };
+    }
 
     const logs = await AuditLog.findAndCountAll({
       where,
-      include: [{ model: Admin, as: 'admin', attributes: ['id', 'name', 'email'] }],
+      include: [
+        {
+          model: Admin,
+          as: 'admin',
+          attributes: [
+            ['AdminId', 'id'], // alias AdminId -> id in the response
+            'name',
+            'email',
+            'role',
+          ],
+        },
+      ],
       order: [['timestamp', 'DESC']],
-      limit: parseInt(limit),
-      offset: parseInt(offset),
+      limit: limitNum,
+      offset,
     });
 
-    res.status(200).json({
+    return res.status(200).json({
       total: logs.count,
-      page: parseInt(page),
-      pages: Math.ceil(logs.count / limit),
+      page: pageNum,
+      pages: Math.ceil(logs.count / limitNum),
       data: logs.rows,
     });
   } catch (error) {
     console.error('Error fetching audit logs:', error);
-    res.status(500).json({ message: 'Failed to fetch audit logs' });
+    return res.status(500).json({ message: 'Failed to fetch audit logs' });
   }
 };

@@ -19,6 +19,10 @@ export default (sequelize, DataTypes) => {
       type: DataTypes.STRING,
       allowNull: false,
     },
+    status: {
+      type: DataTypes.ENUM("Active", "Inactive", "Suspended"),
+      defaultValue: "Active",
+    },
     role: {
       type: DataTypes.ENUM(
         "Super_admin",
@@ -53,6 +57,11 @@ export default (sequelize, DataTypes) => {
       foreignKey: "created_by",
       as: "createdNotifications",
     });
+       // Recruitment actions (posting jobs, approving candidates)
+    Admin.hasMany(models.Recruitment, { foreignKey: "admin_id", as: "recruitments" });
+
+    // CarePoint Applications (review/approval)
+    Admin.hasMany(models.CarePointApplication, { foreignKey: "admin_id", as: "applications_reviewed" });
   };
 
   return Admin;
