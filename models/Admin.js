@@ -58,11 +58,11 @@ export default (sequelize, DataTypes) => {
       as: "createdNotifications",
     });
        // Recruitment actions (posting jobs, approving candidates)
-    Admin.hasMany(models.Recruitment, { foreignKey: "admin_id", as: "recruitments" });
+  //  Admin.hasMany(models.Recruitment, { foreignKey: "admin_id", as: "recruitments" });
 
     // CarePoint Applications (review/approval)
-    Admin.hasMany(models.CarePointApplication, { foreignKey: "admin_id", as: "applications_reviewed" });
-  };
+  //   Admin.hasMany(models.CarePointApplication, { foreignKey: "admin_id", as: "applications_reviewed" });
+   };
 
   return Admin;
 };

@@ -68,7 +68,6 @@ app.use(morgan("tiny"));
 //app.use("/photo", express.static(path.join(__dirname, "photo")));
 
 // Routes
-
 import adminRoutes from "./routes/AdminRoute.js";
 import staffRoutes from "./routes/staffRoute.js";
 import clientRoutes from "./routes/clientRoute.js";
@@ -76,13 +75,23 @@ import shiftRoutes from "./routes/shiftRoute.js";
 import notificationRoutes from "./routes/notificationRoutes.js";
 import auditLogRoutes from "./routes/auditRoute.js";
 import shiftTemplateRoutes from "./routes/shiftTemplate.js";
+import payrollRoute from "./routes/payrollRoute.js";
+import benefitRoute from "./routes/benefitRoute.js";
+import attendanceRoute from "./routes/attendanceRoute.js";
+import performanceRoute from "./routes/performanceRoute.js";
+import carePointAppRoute from "./routes/carePointAppRoute.js";
+import candidateRoute from "./routes/candidateRoutes.js";
+import InterviewRoute from "./routes/interviewsRoutes.js";
+import jobApplicationRoute from "./routes/jobapplicaionRoutes.js";
+import jobPostingRoute from "./routes/jobPostingRoutes.js";
+import learningRoute from "./routes/learningDevRoute.js";
+
 
 // Error Handlers
 import errorHandler from "./error/errorHandler.js";
 import notFoundError from "./error/notFoundError.js";
 
 // Use routes
-
 app.use("/carepoint/admin", adminRoutes);
 app.use("/carepoint/staff", staffRoutes);
 app.use("/carepoint/client", clientRoutes);
@@ -90,6 +99,17 @@ app.use("/carepoint/shift", shiftRoutes);
 app.use("/carepoint/notification", notificationRoutes);
 app.use("/carepoint/audit", auditLogRoutes);
 app.use("/carepoint/template", shiftTemplateRoutes);
+app.use("/payroll", payrollRoute);
+app.use("/benefits", benefitRoute);
+app.use("/attendance", attendanceRoute);
+app.use("/performance", performanceRoute);
+app.use("/learning", learningRoute);
+app.use("/carepoint", carePointAppRoute);
+app.use("/carePointApp", carePointAppRoute);
+app.use("/candidate", candidateRoute);
+app.use("/Interview", InterviewRoute);
+app.use("/jobApplication", jobApplicationRoute);
+app.use("/jobPosting", jobPostingRoute);
 
 // Swagger UI
 //app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));

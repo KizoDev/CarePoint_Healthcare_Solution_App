@@ -1,18 +1,18 @@
-// routes/payrollRoute.js
+// routes/payroll.js
 import express from "express";
 import authMiddleware from "../middleware/authMiddleware.js";
-
 import {
-  createPayroll,
-  getPayrolls,
-  getPayrollById,
-  updatePayroll,
-  markPayrollPaid,
-  deletePayroll,
+  createPayrollRun,
+  getPayrollRuns,
+  getPayrollRunById,
+  updatePayrollRun,
+  getPayslips,
+  getPayslipById,
+  updatePayslip,
+  markPayslipPaid,
 } from "../controllers/payrollController.js";
 
 const router = express.Router();
-
 const authorizeRoles = (...roles) => (req, res, next) => {
   if (!roles.includes(req.user?.role)) return res.status(403).json({ message: "Forbidden" });
   next();
@@ -20,14 +20,16 @@ const authorizeRoles = (...roles) => (req, res, next) => {
 
 router.use(authMiddleware);
 
-// HR/Finance-only actions
-router.post("/", authorizeRoles("super_admin", "authorization"), createPayroll);
-router.put("/:id", authorizeRoles("super_admin", "authorization"), updatePayroll);
-router.patch("/:id/paid", authorizeRoles("super_admin", "authorization"), markPayrollPaid);
-router.delete("/:id", authorizeRoles("super_admin"), deletePayroll);
+// Payroll run management (HR/finance)
+router.post("/runs", authorizeRoles("super_admin", "authorization"), createPayrollRun);
+router.get("/runs", authorizeRoles("super_admin", "authorization", "viewer"), getPayrollRuns);
+router.get("/runs/:id", authorizeRoles("super_admin", "authorization", "viewer"), getPayrollRunById);
+router.put("/runs/:id", authorizeRoles("super_admin", "authorization"), updatePayrollRun);
 
-// Read
-router.get("/", authorizeRoles("super_admin", "authorization", "scheduler", "viewer"), getPayrolls);
-router.get("/:id", authorizeRoles("super_admin", "authorization", "scheduler", "viewer"), getPayrollById);
+// Payslip
+router.get("/payslips", authorizeRoles("super_admin", "authorization", "viewer"), getPayslips);
+router.get("/payslips/:id", authorizeRoles("super_admin", "authorization", "viewer"), getPayslipById);
+router.put("/payslips/:id", authorizeRoles("super_admin", "authorization"), updatePayslip);
+router.patch("/payslips/:id/paid", authorizeRoles("super_admin", "authorization"), markPayslipPaid);
 
 export default router;

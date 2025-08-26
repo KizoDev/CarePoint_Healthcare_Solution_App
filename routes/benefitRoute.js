@@ -1,12 +1,12 @@
-// routes/benefitRoute.js
+// routes/benefits.js
 import express from "express";
 import authMiddleware from "../middleware/authMiddleware.js";
 import {
-  createBenefit,
-  getBenefits,
-  getBenefitById,
-  updateBenefit,
-  deleteBenefit,
+  createBenefitPlan,
+  getBenefitPlans,
+  assignStaffBenefit,
+  getStaffBenefits,
+  removeStaffBenefit,
 } from "../controllers/benefitController.js";
 
 const router = express.Router();
@@ -17,10 +17,11 @@ const authorizeRoles = (...roles) => (req, res, next) => {
 
 router.use(authMiddleware);
 
-router.post("/", authorizeRoles("super_admin", "authorization"), createBenefit);
-router.get("/", authorizeRoles("super_admin", "authorization", "scheduler", "viewer"), getBenefits);
-router.get("/:id", authorizeRoles("super_admin", "authorization", "scheduler", "viewer"), getBenefitById);
-router.put("/:id", authorizeRoles("super_admin", "authorization"), updateBenefit);
-router.delete("/:id", authorizeRoles("super_admin"), deleteBenefit);
+router.post("/plans", authorizeRoles("super_admin", "authorization"), createBenefitPlan);
+router.get("/plans", authorizeRoles("super_admin", "authorization", "viewer"), getBenefitPlans);
+
+router.post("/assign", authorizeRoles("super_admin", "authorization"), assignStaffBenefit);
+router.get("/staff", authorizeRoles("super_admin", "authorization", "viewer"), getStaffBenefits);
+router.delete("/assign/:id", authorizeRoles("super_admin", "authorization"), removeStaffBenefit);
 
 export default router;

@@ -1,91 +1,70 @@
 // controllers/benefitController.js
 import db from "../models/index.js";
-const { Benefit, Staff, AuditLog } = db;
+const { BenefitPlan, StaffBenefit, Staff, AuditLog, Notification } = db;
 
-const logAudit = async (req, action, module, details) => {
+const logAudit = async (adminId, action, moduleName, details) => {
   try {
-    await AuditLog.create({
-      admin_id: req.user?.id,
-      action,
-      module,
-      details: details ? JSON.stringify(details) : null,
-    });
-  } catch (e) {
-    console.error("Audit log failed:", e.message);
+    await AuditLog.create({ admin_id: adminId || null, action, module: moduleName, details });
+  } catch (e) { console.error("AuditLog failed:", e.message); }
+};
+
+export const createBenefitPlan = async (req, res) => {
+  try {
+    const { name, description, type } = req.body;
+    const plan = await BenefitPlan.create({ name, description, type });
+    await logAudit(req.user?.id, "CREATE_BENEFIT_PLAN", "Benefits", `Plan ${plan.benefitPlanId}`);
+    res.status(201).json({ message: "Benefit plan created", data: plan });
+  } catch (err) {
+    res.status(500).json({ message: "Failed to create benefit plan", error: err.message });
   }
 };
 
-export const createBenefit = async (req, res) => {
+export const getBenefitPlans = async (req, res) => {
   try {
-    const benefit = await Benefit.create(req.body); // { staffId, type, provider, startDate, endDate, status, coverageDetails }
-    await logAudit(req, "create", "Benefits", { benefitId: benefit.id, staffId: benefit.staffId });
+    const plans = await BenefitPlan.findAll({ order: [["created_at", "DESC"]] });
+    res.json(plans);
+  } catch (err) {
+    res.status(500).json({ message: "Failed to fetch benefit plans", error: err.message });
+  }
+};
 
+export const assignStaffBenefit = async (req, res) => {
+  try {
+    const { staffId, planId } = req.body;
+    const enrollment = await StaffBenefit.create({ staff_id: staffId, benefit_plan_id: planId });
+
+    // notify staff
     const io = req.app.get("io");
-    if (io) io.to(`user_${benefit.staffId}`).emit("benefitAssigned", benefit);
+    if (io) io.to(`user_${staffId}`).emit("benefit:assigned", { message: "You were assigned a benefit plan", enrollment });
+    await Notification.create({ title: "Benefit Assigned", message: "You were assigned a benefit plan", staffId });
 
-    res.status(201).json({ message: "Benefit created", data: benefit });
+    await logAudit(req.user?.id, "ASSIGN_BENEFIT", "Benefits", `Assigned plan ${planId} to staff ${staffId}`);
+    res.status(201).json({ message: "Staff benefit assigned", data: enrollment });
   } catch (err) {
-    res.status(500).json({ message: "Failed to create benefit", error: err.message });
+    res.status(500).json({ message: "Failed to assign benefit", error: err.message });
   }
 };
 
-export const getBenefits = async (req, res) => {
+export const getStaffBenefits = async (req, res) => {
   try {
-    const { staffId, status, page = 1, limit = 20 } = req.query;
+    const { staffId } = req.query;
     const where = {};
-    if (staffId) where.staffId = staffId;
-    if (status) where.status = status;
-
-    const { count, rows } = await Benefit.findAndCountAll({
-      where,
-      include: [{ model: Staff, as: "staff", attributes: ["id", "name", "email"] }],
-      order: [["createdAt", "DESC"]],
-      limit: parseInt(limit),
-      offset: (parseInt(page) - 1) * parseInt(limit),
-    });
-
-    res.json({ total: count, page: parseInt(page), pages: Math.ceil(count / limit), data: rows });
+    if (staffId) where.staff_id = staffId;
+    const rows = await StaffBenefit.findAll({ where, include: [{ model: BenefitPlan, as: "benefitPlan" }] });
+    res.json(rows);
   } catch (err) {
-    res.status(500).json({ message: "Failed to fetch benefits", error: err.message });
+    res.status(500).json({ message: "Failed to fetch staff benefits", error: err.message });
   }
 };
 
-export const getBenefitById = async (req, res) => {
+export const removeStaffBenefit = async (req, res) => {
   try {
-    const benefit = await Benefit.findByPk(req.params.id, {
-      include: [{ model: Staff, as: "staff", attributes: ["id", "name", "email"] }],
-    });
-    if (!benefit) return res.status(404).json({ message: "Benefit not found" });
-    res.json(benefit);
+    const enrollment = await StaffBenefit.findByPk(req.params.id);
+    if (!enrollment) return res.status(404).json({ message: "StaffBenefit not found" });
+    await enrollment.destroy();
+    await logAudit(req.user?.id, "REMOVE_BENEFIT", "Benefits", `Removed enrollment ${req.params.id}`);
+    res.json({ message: "Staff benefit removed" });
   } catch (err) {
-    res.status(500).json({ message: "Failed to fetch benefit", error: err.message });
-  }
-};
-
-export const updateBenefit = async (req, res) => {
-  try {
-    const benefit = await Benefit.findByPk(req.params.id);
-    if (!benefit) return res.status(404).json({ message: "Benefit not found" });
-
-    await benefit.update(req.body);
-    await logAudit(req, "update", "Benefits", { benefitId: benefit.id });
-
-    res.json({ message: "Benefit updated", data: benefit });
-  } catch (err) {
-    res.status(500).json({ message: "Failed to update benefit", error: err.message });
-  }
-};
-
-export const deleteBenefit = async (req, res) => {
-  try {
-    const benefit = await Benefit.findByPk(req.params.id);
-    if (!benefit) return res.status(404).json({ message: "Benefit not found" });
-
-    await benefit.destroy();
-    await logAudit(req, "delete", "Benefits", { benefitId: req.params.id });
-
-    res.json({ message: "Benefit deleted" });
-  } catch (err) {
-    res.status(500).json({ message: "Failed to delete benefit", error: err.message });
+    res.status(500).json({ message: "Failed to remove staff benefit", error: err.message });
   }
 };

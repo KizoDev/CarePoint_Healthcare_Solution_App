@@ -1,26 +1,19 @@
-// routes/attendanceRoute.js
 import express from "express";
+import { checkIn, checkOut, requestLeave, updateLeaveStatus } from "../controllers/attendanceController.js";
 import authMiddleware from "../middleware/authMiddleware.js";
-import {
-  createAttendance,
-  getAttendances,
-  getAttendanceById,
-  updateAttendance,
-  deleteAttendance,
-} from "../controllers/attendanceController.js";
+import { roleMiddleware } from "../middleware/roleMiddleware.js";
 
 const router = express.Router();
-const authorizeRoles = (...roles) => (req, res, next) => {
-  if (!roles.includes(req.user?.role)) return res.status(403).json({ message: "Forbidden" });
-  next();
-};
-
 router.use(authMiddleware);
 
-router.post("/", authorizeRoles("super_admin", "scheduler"), createAttendance);
-router.get("/", authorizeRoles("super_admin", "scheduler", "authorization", "viewer"), getAttendances);
-router.get("/:id", authorizeRoles("super_admin", "scheduler", "authorization", "viewer"), getAttendanceById);
-router.put("/:id", authorizeRoles("super_admin", "scheduler"), updateAttendance);
-router.delete("/:id", authorizeRoles("super_admin"), deleteAttendance);
+// Staff attendance
+router.post("/checkin", checkIn);
+router.post("/checkout", checkOut);
+
+// Staff leave request
+router.post("/leave", requestLeave);
+
+// Admin approves/rejects leave
+router.patch("/leave/:id", roleMiddleware("admin", "super_admin"), updateLeaveStatus);
 
 export default router;

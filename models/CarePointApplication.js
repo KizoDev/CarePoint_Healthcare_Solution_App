@@ -1,40 +1,31 @@
-// models/CarePointApplication.js
+// Sequelize model for CarePointApplication
 export default (sequelize, DataTypes) => {
   const CarePointApplication = sequelize.define("CarePointApplication", {
-    app_id: {
+    applicationId: {
       type: DataTypes.UUID,
       defaultValue: DataTypes.UUIDV4,
       primaryKey: true,
     },
-    staff_id: {
-      type: DataTypes.UUID,
-      allowNull: false,
-    },
-    application_type: {
-      type: DataTypes.STRING, // e.g. Leave Request, Shift Change
-      allowNull: false,
-    },
-    details: {
-      type: DataTypes.TEXT,
-      allowNull: true,
-    },
     status: {
-      type: DataTypes.ENUM("Pending", "Approved", "Rejected"),
-      defaultValue: "Pending",
+      type: DataTypes.STRING, // pending, approved, rejected
+      defaultValue: "pending",
     },
     submitted_at: {
       type: DataTypes.DATE,
       defaultValue: DataTypes.NOW,
     },
+    reviewed_at: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
   }, {
     timestamps: true,
     underscored: true,
-    tableName: "carepoint_applications",
   });
 
   CarePointApplication.associate = (models) => {
     CarePointApplication.belongsTo(models.Staff, { foreignKey: "staff_id", as: "staff" });
-    CarePointApplication.belongsTo(models.Admin, { foreignKey: "approved_by", as: "admin" });
+    CarePointApplication.belongsTo(models.Admin, { foreignKey: "reviewed_by", as: "reviewer" });
   };
 
   return CarePointApplication;
