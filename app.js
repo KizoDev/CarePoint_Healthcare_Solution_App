@@ -7,7 +7,7 @@ import axios from "axios";
 import http from "http";
 import path from "path";
 import { fileURLToPath } from "url";
-
+import swaggerDocs  from "./swagger.js";
 import db from "./models/index.js";
 await db.sequelize.sync({ alter: true }); 
 
@@ -38,7 +38,7 @@ if (io) {
 import "./models/index.js";
 
 // Swagger setup
-//import { swaggerUi, swaggerSpec } from "./swagger/index.js";
+//import { swaggerUi, swaggerSpec } from "./swagger.js";
 
 // CORS configuration
 const whiteList = [
@@ -114,7 +114,8 @@ app.use("/jobPosting", jobPostingRoute);
 // Swagger UI
 //app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
-
+const client_url = process.env.CLIENT_URL || "http://localhost:5000";
+swaggerDocs(app, client_url);
 
 // 404 Handler
 app.use(notFoundError);
