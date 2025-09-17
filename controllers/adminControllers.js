@@ -7,7 +7,7 @@ const {Admin} = db;
 const generateToken = (admin) => {
   return jwt.sign(
     { id: admin.id, role: admin.role },
-    process.env.JWT_SECRET,
+    process.env.SECRET_KEY,
     { expiresIn: "1d" }
   );
 };
@@ -28,25 +28,78 @@ export const loginAdmin = async (req, res) => {
   }
 };
 
-export const createAdmin = async (req, res) => {
-  if (req.user.role !== "super_admin") {
-    return res.status(403).json({ message: "Only super admins can create other admins" });
-  }
+// export const createAdmin = async (req, res) => {
+//   if (req.user.role !== "super_admin") {
+//     return res.status(403).json({ message: "Only super admins can create other admins" });
+//   }
 
-  const { name, email, password, role } = req.body;
+//   const { name, email, password, role } = req.body;
+//   try {
+//     const hashedPassword = await bcrypt.hash(password, 10);
+//     const newAdmin = await Admin.create({
+//       name,
+//       email,
+//       password: hashedPassword,
+//       role,
+//     });
+//     res.status(201).json(newAdmin);
+//   } catch (err) {
+//     res.status(500).json({ error: err.message });
+//   }
+// };
+
+
+export const createAdmin = async (req, res) => {
   try {
+    // Count how many admins exist
+    const adminCount = await Admin.count();
+
+    // First admin case
+    if (adminCount === 0) {
+      const { name, email, password } = req.body;
+      const hashedPassword = await bcrypt.hash(password, 10);
+
+      const firstAdmin = await Admin.create({
+        name,
+        email,
+        password: hashedPassword,
+        role: "Super_admin",
+      });
+
+      return res.status(201).json({
+        message: "First admin created successfully",
+        admin: firstAdmin,
+      });
+    }
+console.log("req.user in createAdmin:", req.user);
+    // For other admins → check authentication
+    if (!req.user || req.user.role !== "Super_admin") {
+      return res.status(403).json({
+        message: "Only super admins can create other admins",
+      });
+    }
+
+
+    // Create normal admin
+    const { name, email, password, role } = req.body;
     const hashedPassword = await bcrypt.hash(password, 10);
+
     const newAdmin = await Admin.create({
       name,
       email,
       password: hashedPassword,
       role,
     });
-    res.status(201).json(newAdmin);
+
+    res.status(201).json({
+      message: "Admin created successfully",
+      admin: newAdmin,
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
+
 
 export const getAllAdmins = async (req, res) => {
   try {

@@ -51,7 +51,7 @@ const router = express.Router();
  *       400:
  *         description: Invalid input
  */
-router.post("/register", createAdmin);
+router.post("/register", authMiddleware, createAdmin);
 
 /**
  * @swagger
