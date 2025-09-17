@@ -49,7 +49,7 @@ export const getAuditLogs = async (req, res) => {
           model: Admin,
           as: 'admin',
           attributes: [
-            ['AdminId', 'id'], // alias AdminId -> id in the response
+            'AdminId',
             'name',
             'email',
             'role',
@@ -69,6 +69,7 @@ export const getAuditLogs = async (req, res) => {
     });
   } catch (error) {
     console.error('Error fetching audit logs:', error);
-    return res.status(500).json({ message: 'Failed to fetch audit logs' });
+    return res.status(500).json({ message: 'Failed to fetch audit logs',
+     error:error.message });
   }
 };

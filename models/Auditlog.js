@@ -1,12 +1,12 @@
 // models/AuditLog.js
 export default (sequelize, DataTypes) => {
   const AuditLog = sequelize.define("AuditLog", {
-    id: {
+    AuditId: {
       type: DataTypes.UUID,
       defaultValue: DataTypes.UUIDV4,
       primaryKey: true,
     },
-    admin_id: {
+    AdminId: {
       type: DataTypes.UUID,
       allowNull: false,
     },

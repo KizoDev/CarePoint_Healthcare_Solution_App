@@ -69,6 +69,6 @@ const router = express.Router();
  *       403:
  *         description: Forbidden (not super admin)
  */
-router.get("/", authMiddleware, roleMiddleware("super_admin"), getAuditLogs);
+router.get("/", authMiddleware, roleMiddleware("Super_admin"), getAuditLogs);
 
 export default router;
