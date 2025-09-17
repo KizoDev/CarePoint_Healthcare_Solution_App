@@ -1,17 +1,18 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import  db  from "../models/index.js";
+import db from "../models/index.js";
 
-const {Admin} = db;
+const { Admin, AuditLog } = db;
 
 const generateToken = (admin) => {
   return jwt.sign(
-    { id: admin.id, role: admin.role },
+    { id: admin.AdminId, role: admin.role },
     process.env.SECRET_KEY,
     { expiresIn: "1d" }
   );
 };
 
+// 🔑 Login Admin
 export const loginAdmin = async (req, res) => {
   const { email, password } = req.body;
   try {
@@ -22,36 +23,24 @@ export const loginAdmin = async (req, res) => {
     if (!validPassword) return res.status(401).json({ message: "Invalid credentials" });
 
     const token = generateToken(admin);
+
+    // // ✅ Log the login
+    // await AuditLog.create({
+    //   admin_id: admin.id,
+    //   action: "LOGIN",
+    //   module: "Admin",
+    //   details: `Admin ${admin.email} logged in`,
+    // });
+
     res.status(200).json({ token, admin });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
 
-// export const createAdmin = async (req, res) => {
-//   if (req.user.role !== "super_admin") {
-//     return res.status(403).json({ message: "Only super admins can create other admins" });
-//   }
-
-//   const { name, email, password, role } = req.body;
-//   try {
-//     const hashedPassword = await bcrypt.hash(password, 10);
-//     const newAdmin = await Admin.create({
-//       name,
-//       email,
-//       password: hashedPassword,
-//       role,
-//     });
-//     res.status(201).json(newAdmin);
-//   } catch (err) {
-//     res.status(500).json({ error: err.message });
-//   }
-// };
-
-
+// 🔑 Create Admin
 export const createAdmin = async (req, res) => {
   try {
-    // Count how many admins exist
     const adminCount = await Admin.count();
 
     // First admin case
@@ -71,16 +60,14 @@ export const createAdmin = async (req, res) => {
         admin: firstAdmin,
       });
     }
-console.log("req.user in createAdmin:", req.user);
-    // For other admins → check authentication
+
+
     if (!req.user || req.user.role !== "Super_admin") {
       return res.status(403).json({
         message: "Only super admins can create other admins",
       });
     }
 
-
-    // Create normal admin
     const { name, email, password, role } = req.body;
     const hashedPassword = await bcrypt.hash(password, 10);
 
@@ -91,37 +78,65 @@ console.log("req.user in createAdmin:", req.user);
       role,
     });
 
+    //  Log the admin creation
+    await AuditLog.create({
+      admin_id: req.user.id,
+      action: "CREATE",
+      module: "Admin",
+      details: `Created admin: ${newAdmin.email} with role: ${newAdmin.role}`,
+    });
+
     res.status(201).json({
       message: "Admin created successfully",
       admin: newAdmin,
     });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: err.message, details: err.errors || err });
   }
 };
 
-
+// 🔑 Get All Admins
 export const getAllAdmins = async (req, res) => {
   try {
     const admins = await Admin.findAll();
+
+    // ✅ Log the fetch action
+    await AuditLog.create({
+      admin_id: req.user?.id || firstAdmin.id,
+      action: "READ",
+      module: "Admin",
+      details: `Fetched all admins`,
+    });
+
     res.status(200).json(admins);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
 
+// 🔑 Get Admin by ID
 export const getAdminById = async (req, res) => {
   try {
     const admin = await Admin.findByPk(req.params.id);
     if (!admin) return res.status(404).json({ message: "Admin not found" });
+
+    // ✅ Log the view action
+    await AuditLog.create({
+      admin_id: req.user?.id || null,
+      action: "READ",
+      module: "Admin",
+      details: `Viewed admin: ${admin.email}`,
+    });
+
     res.status(200).json(admin);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
 
+// 🔑 Delete Admin
 export const deleteAdmin = async (req, res) => {
-  if (req.user.role !== "super_admin") {
+  if (req.user.role !== "Super_admin") {
     return res.status(403).json({ message: "Only super admins can delete admins" });
   }
 
@@ -130,6 +145,15 @@ export const deleteAdmin = async (req, res) => {
     if (!admin) return res.status(404).json({ message: "Admin not found" });
 
     await admin.destroy();
+
+    // ✅ Log the deletion
+    await AuditLog.create({
+      admin_id: req.user.id,
+      action: "DELETE",
+      module: "Admin",
+      details: `Deleted admin: ${admin.email}`,
+    });
+
     res.status(200).json({ message: "Admin deleted successfully" });
   } catch (err) {
     res.status(500).json({ error: err.message });
