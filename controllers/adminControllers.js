@@ -120,13 +120,6 @@ export const getAdminById = async (req, res) => {
     const admin = await Admin.findByPk(req.params.id);
     if (!admin) return res.status(404).json({ message: "Admin not found" });
 
-    // ✅ Log the view action
-    await AuditLog.create({
-      admin_id: req.user?.id || null,
-      action: "READ",
-      module: "Admin",
-      details: `Viewed admin: ${admin.email}`,
-    });
 
     res.status(200).json(admin);
   } catch (err) {

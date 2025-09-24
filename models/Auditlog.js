@@ -6,9 +6,13 @@ export default (sequelize, DataTypes) => {
       defaultValue: DataTypes.UUIDV4,
       primaryKey: true,
     },
-    admin_id: {
+     admin_id: {
       type: DataTypes.UUID,
-      allowNull: false,
+      allowNull: true, // ✅ now optional
+    },
+    staff_id: {
+      type: DataTypes.UUID,
+      allowNull: true, // ✅ new field
     },
     action: {
       type: DataTypes.STRING,

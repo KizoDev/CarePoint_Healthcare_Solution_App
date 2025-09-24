@@ -1,6 +1,14 @@
 import jwt from 'jsonwebtoken';
+import db from "../models/index.js";
 
-const authMiddleware = (req, res, next) => {
+const { Admin } = db;
+const authMiddleware =async (req, res, next) => {
+
+const adminCount = await Admin.count();
+  if (adminCount === 0) {
+    return next();
+  }
+
   const authHeader = req.headers.authorization;
 
   if (!authHeader || !authHeader.startsWith("Bearer ")) {

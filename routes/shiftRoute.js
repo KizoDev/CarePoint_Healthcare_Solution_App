@@ -6,7 +6,8 @@ import {
   assignStaffToShift,
   filterShifts,
   getAllShifts,
-  getSingleShift
+  getSingleShift,
+  getStaffShiftHistory
 } from "../controllers/shiftController.js";
 
 import authMiddleware from "../middleware/authMiddleware.js";
@@ -210,5 +211,25 @@ router.post(
   roleMiddleware(["super_admin", "scheduler"]),
   assignStaffToShift
 );
-
+/**
+ * @swagger
+ * /staff/{id}/shift-history:
+ *   get:
+ *     summary: Get staff shift history
+ *     tags: [Staff]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: List of staff shifts
+ *       404:
+ *         description: Staff not found
+ */
+router.get("/:id/shift-history",authMiddleware, getStaffShiftHistory);
 export default router;

@@ -1,35 +1,173 @@
+import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
 import db from "../models/index.js";
-const { Staff, StaffDocument, Shift, Notification } = db;
+const { Staff, StaffDocument, Shift, Notification, AuditLog } = db;
+import nodemailer from "nodemailer";
 
-// Create a new staff
-export const createStaff = async (req, res) => {
-  try {
-    const newStaff = await Staff.create(req.body);
+// const generateToken = (staff) => {
+//   return jwt.sign(
+//     { id: staff.staffId, role: staff.role },
+//     process.env.SECRET_KEY,
+//     { expiresIn: "1d" }
+//   );
+// };
+const generateToken = (user) => {
+  return jwt.sign(
+    {
+      id: user.adminId || user.staffId, 
+      role: user.role,
+      email: user.email,
+    },
+    process.env.SECRET_KEY,
+    { expiresIn: "1d" }
+  );
+};
 
-    // Notify staff (real time & DB)
-    const io = req.app.get("io");
-    if (io) {
-      io.to(`user_${newStaff.id}`).emit("welcomeStaff", {
-        message: "Your staff account has been created",
-        staff: newStaff,
-      });
-    }
-
-    await Notification.create({
-      title: "Staff Account Created",
-      message: "Your staff account has been created.",
-      type: "staff",
-      staffId: newStaff.id,
+let mailTransporter = nodemailer.createTransport({
+      host: "mail.skilltopims.com",  
+      port: 587, 
+      secure: false, 
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS,
+      },
+      tls: {
+        rejectUnauthorized: false
+      }
     });
 
-    res.status(201).json({ message: "Staff created successfully", data: newStaff });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
+export const inviteStaff = async (req, res) => {
+  try {
+    const role = req.user.role;
+    if (role !== "HR_admin") {
+      return res.status(401).json({ message: 'You are not allowed to access this route' });
+    }
+
+    const { firstName, lastName, email, password } = req.body;
+    if (!firstName || !lastName || !email || !password) {
+      return res.status(400).json({ message: 'All fields (firstname, lastname, email, password) are required' });
+    }
+
+    // Check if email already exists in Staff
+    const existingStaff = await Staff.findOne({ where: { email } });
+    if (existingStaff) {
+      return res.status(400).json({ message: 'Email already exists as a staff' });
+    }
+
+    // Hash password
+    const saltRounds = 10;
+    const hashedPassword = await bcrypt.hash(password, saltRounds);
+
+    const url = process.env.CLIENT_URL;
+
+    // Create new staff
+    const newStaff = await Staff.create({
+      firstName,
+      lastName,
+      email,
+      password: hashedPassword,
+    });
+
+    // Save to AuditLog
+    await AuditLog.create({
+      admin_id: req.user.id,
+      action: "Invite Staff",
+      module: "staff",
+      details: `HR_admin invited new staff: ${firstName} ${lastName} (${email})`,
+      timestamp: new Date(),
+    });
+
+    // Prepare email
+    let mailOption = {
+      from: process.env.EMAIL_USER,
+      to: newStaff.email,
+      subject: "You have been invited as a Staff Member",
+      html: `<h2>Hi ${firstName},</h2>
+      <p>You have been invited by Admin to join as a staff member.</p>
+      <p>Please use the credentials below to log in by clicking on this <a href="${url}">link</a>:</p>
+      <p>Email: ${newStaff.email}<br>
+      Password: ${password}</p>`
+    };
+
+    // Send email
+    mailTransporter.sendMail(mailOption, function (error, info) {
+      if (error) {
+        console.log(error);
+      } else {
+        console.log('Invitation email sent to staff');
+      }
+    });
+
+    return res.status(201).json({
+      success: true,
+      message: 'Staff invited successfully, email has been sent, and audit log created',
+      data: {
+        staffId: newStaff.staffId,
+        email: newStaff.email,
+        status: newStaff.status,
+        role: newStaff.role,
+      },
+    });
+
+  } catch (err) {
+    console.error('Error inviting staff:', err);
+    return res.status(500).json({ message: 'Internal Server Error' });
+  }
+};
+
+// login staff
+export const loginStaff = async (req, res) => {
+  const { email, password } = req.body;
+
+  try {
+    // Find staff by email
+    const staff = await Staff.findOne({ where: { email } });
+    if (!staff) {
+      return res.status(401).json({ message: "Invalid credentials" });
+    }
+
+    //  Check permissions
+    const hasAccess = staff.permissions?.some(
+      (perm) => perm.label === "Access_mobile_App" && perm.Access === true
+    );
+    if (!hasAccess) {
+      return res.status(403).json({ message: "Access denied: Permission not granted" });
+    }
+
+    // 🔑 Compare password
+    const validPassword = await bcrypt.compare(password, staff.password);
+    if (!validPassword) {
+      return res.status(401).json({ message: "Invalid credentials" });
+    }
+
+    // 🎟️ Generate JWT token
+    const token = generateToken(staff);
+
+    // ✅ Send response
+    res.status(200).json({
+      token,
+      staff: {
+        id: staff.staffId,
+        username: staff.firstname,
+        email: staff.email,
+        role: staff.role,
+        status: staff.status,
+      },
+    });
+
+  } catch (err) {
+    console.error("Error logging in staff:", err);
+    res.status(500).json({ error: err.message });
   }
 };
 
 // Get all staff with pagination
 export const getAllStaff = async (req, res) => {
+  const role = req.user.role;
+  if (role !== "HR_admin") {
+    return res.status(401).json({ message: "You are not allowed to access this route" });
+  }
+
   try {
     const { role, is_available, page = 1, limit = 10 } = req.query;
 
@@ -59,6 +197,11 @@ export const getAllStaff = async (req, res) => {
 
 // Get a single staff by ID
 export const getSingleStaff = async (req, res) => {
+  const role = req.user.role;
+  if (role !== "HR_admin") {
+    return res.status(401).json({ message: "You are not allowed to access this route" });
+  }
+
   try {
     const staff = await Staff.findByPk(req.params.id, {
       include: [{ model: StaffDocument, as: "documents" }],
@@ -72,13 +215,18 @@ export const getSingleStaff = async (req, res) => {
 
 // Update staff profile
 export const updateStaff = async (req, res) => {
+  const role = req.user.role;
+  if (role !== "HR_admin") {
+    return res.status(401).json({ message: "You are not allowed to access this route" });
+  }
+
   try {
     const staff = await Staff.findByPk(req.params.id);
     if (!staff) return res.status(404).json({ message: "Staff not found" });
 
     await staff.update(req.body);
 
-    // Notify staff
+    // 🔔 Notify staff
     const io = req.app.get("io");
     if (io) {
       io.to(`user_${staff.id}`).emit("staffUpdated", {
@@ -94,6 +242,15 @@ export const updateStaff = async (req, res) => {
       staffId: staff.id,
     });
 
+    //  Save to AuditLog
+    await AuditLog.create({
+      admin_id: req.user.id,
+      action: "Update Staff",
+      module: "staff",
+      details: `HR_admin updated staff: ${staff.firstname} ${staff.lastname} (${staff.email})`,
+      timestamp: new Date(),
+    });
+
     res.status(200).json({ message: "Staff updated successfully", data: staff });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -102,25 +259,24 @@ export const updateStaff = async (req, res) => {
 
 // Delete staff
 export const deleteStaff = async (req, res) => {
+  const role = req.user.role;
+  if (role !== "HR_admin") {
+    return res.status(401).json({ message: "You are not allowed to access this route" });
+  }
+
   try {
     const staff = await Staff.findByPk(req.params.id);
     if (!staff) return res.status(404).json({ message: "Staff not found" });
 
     await staff.destroy();
 
-    // Optional notify deletion
-    const io = req.app.get("io");
-    if (io) {
-      io.to(`user_${staff.id}`).emit("staffDeleted", {
-        message: "Your staff account has been removed",
-      });
-    }
-
-    await Notification.create({
-      title: "Account Removed",
-      message: "Your staff account has been deleted.",
-      type: "staff",
-      staffId: staff.id,
+    // Save to AuditLog
+    await AuditLog.create({
+      admin_id: req.user.id,
+      action: "Delete Staff",
+      module: "staff",
+      details: `HR_admin deleted staff: ${staff.firstname} ${staff.lastname} (${staff.email})`,
+      timestamp: new Date(),
     });
 
     res.status(200).json({ message: "Staff deleted successfully" });
@@ -129,60 +285,43 @@ export const deleteStaff = async (req, res) => {
   }
 };
 
-// Get staff shift history
-export const getStaffShiftHistory = async (req, res) => {
+
+export const updatePermissions = async (req, res) => {
   try {
-    const shifts = await Shift.findAll({
-      where: { staff_id: req.params.id },
-      order: [["start_time", "DESC"]],
-    });
-
-    res.status(200).json(shifts);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
-
-// Toggle mobile app access
-export const toggleMobileAccess = async (req, res) => {
-  try {
-    const staff = await Staff.findByPk(req.params.id);
-    if (!staff) return res.status(404).json({ message: "Staff not found" });
-
-    const access = staff.Can_access_mobile_app?.[0]?.Access ?? true;
-
-    staff.Can_access_mobile_app = [
-      {
-        label: "Access_mobile_App",
-        Access: !access,
-      },
-    ];
-
-    await staff.save();
-
-    const io = req.app.get("io");
-    if (io) {
-      io.to(`user_${staff.id}`).emit("mobileAccessToggled", {
-        message: !access
-          ? "Your mobile app access has been ENABLED"
-          : "Your mobile app access has been DISABLED",
-      });
+    // ✅ Ensure only HR_admin can update permissions
+    const role = req.user.role;
+    if (role !== "HR_admin") {
+      return res.status(401).json({ message: "You are not allowed to access this route" });
     }
 
-    await Notification.create({
-      title: "Mobile Access",
-      message: !access
-        ? "Your access to the mobile app has been enabled."
-        : "Your access to the mobile app has been disabled.",
-      type: "staff",
-      staffId: staff.id,
-    });
+    //  Extract staffId from params
+    const { id: staffId } = req.params;
 
-    res.status(200).json({
-      message: `Mobile access ${!access ? "enabled" : "disabled"} successfully`,
-      access: !access,
+    //  Extract permissions from body
+    const { permissions } = req.body;
+
+    if (!Array.isArray(permissions)) {
+      return res.status(400).json({ message: "Permissions must be an array" });
+    }
+
+    // Find staff
+    const staff = await Staff.findOne({ where: { staffId } });
+    if (!staff) {
+      return res.status(404).json({ message: "Staff not found" });
+    }
+
+    //  Update permissions
+    staff.permissions = permissions;
+    await staff.save();
+
+    console.log("updatedPermissions", permissions);
+
+    return res.status(200).json({
+      message: "Permissions updated successfully",
+      permissions: staff.permissions,
     });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
+  } catch (err) {
+    console.error("Error updating permissions:", err);
+    return res.status(500).json({ message: "Internal Server Error" });
   }
 };

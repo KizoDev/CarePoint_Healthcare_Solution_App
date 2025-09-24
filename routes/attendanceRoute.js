@@ -33,7 +33,7 @@ router.use(authMiddleware);
  *       400:
  *         description: Already checked in or invalid request
  */
-router.post("/checkin", checkIn);
+router.post("/checkin",authMiddleware, checkIn);
 
 /**
  * @swagger
@@ -49,7 +49,7 @@ router.post("/checkin", checkIn);
  *       400:
  *         description: Already checked out or invalid request
  */
-router.post("/checkout", checkOut);
+router.post("/checkout",authMiddleware, checkOut);
 
 /**
  * @swagger
@@ -84,7 +84,7 @@ router.post("/checkout", checkOut);
  *       400:
  *         description: Invalid request
  */
-router.post("/leave", requestLeave);
+router.post("/leave",authMiddleware, requestLeave);
 
 /**
  * @swagger
@@ -120,8 +120,7 @@ router.post("/leave", requestLeave);
  *         description: Leave request not found
  */
 router.patch(
-  "/leave/:id",
-  roleMiddleware("admin", "super_admin"),
+  "/leave/:id",authMiddleware,
   updateLeaveStatus
 );
 

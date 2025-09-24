@@ -195,3 +195,21 @@ export const filterShifts = async (req, res) => {
     res.status(500).json({ error: "Error filtering shifts", details: err.message });
   }
 };
+// Get staff shift history
+export const getStaffShiftHistory = async (req, res) => {
+  const role = req.user.role;
+  if (role !== "HR_admin") {
+    return res.status(401).json({ message: "You are not allowed to access this route" });
+  }
+
+  try {
+    const shifts = await Shift.findAll({
+      where: { staff_id: req.params.id },
+      order: [["start_time", "DESC"]],
+    });
+
+    res.status(200).json(shifts);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};

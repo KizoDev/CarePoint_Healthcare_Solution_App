@@ -1,17 +1,16 @@
 // routes/staffRoutes.js
 import express from "express";
 import {
-  createStaff,
+  inviteStaff,
   getAllStaff,
   getSingleStaff,
   updateStaff,
   deleteStaff,
-  getStaffShiftHistory,
-  toggleMobileAccess,
+  updatePermissions,
+  loginStaff
 } from "../controllers/staffController.js";
 
 import authMiddleware from "../middleware/authMiddleware.js";
-import { roleMiddleware } from "../middleware/roleMiddleware.js";
 
 const router = express.Router();
 
@@ -45,7 +44,7 @@ router.use(authMiddleware);
  *       500:
  *         description: Server error
  */
-router.post("/", roleMiddleware(["super_admin", "scheduler"]), createStaff);
+router.post("/createstaff", authMiddleware, inviteStaff);
 
 /**
  * @swagger
@@ -82,7 +81,7 @@ router.post("/", roleMiddleware(["super_admin", "scheduler"]), createStaff);
  *       500:
  *         description: Server error
  */
-router.get("/", roleMiddleware(["super_admin", "scheduler", "authorization", "viewer"]), getAllStaff);
+router.get("/getAll",authMiddleware , getAllStaff);
 
 /**
  * @swagger
@@ -104,7 +103,7 @@ router.get("/", roleMiddleware(["super_admin", "scheduler", "authorization", "vi
  *       404:
  *         description: Staff not found
  */
-router.get("/:id", roleMiddleware(["super_admin", "scheduler", "authorization", "viewer"]), getSingleStaff);
+router.get("/getOne/:id", authMiddleware, getSingleStaff);
 
 /**
  * @swagger
@@ -132,7 +131,7 @@ router.get("/:id", roleMiddleware(["super_admin", "scheduler", "authorization", 
  *       404:
  *         description: Staff not found
  */
-router.put("/:id", roleMiddleware(["super_admin", "scheduler"]), updateStaff);
+router.put("/:id", authMiddleware, updateStaff);
 
 /**
  * @swagger
@@ -154,29 +153,9 @@ router.put("/:id", roleMiddleware(["super_admin", "scheduler"]), updateStaff);
  *       404:
  *         description: Staff not found
  */
-router.delete("/:id", roleMiddleware(["super_admin"]), deleteStaff);
+router.delete("/:id",authMiddleware, deleteStaff);
 
-/**
- * @swagger
- * /staff/{id}/shift-history:
- *   get:
- *     summary: Get staff shift history
- *     tags: [Staff]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *     responses:
- *       200:
- *         description: List of staff shifts
- *       404:
- *         description: Staff not found
- */
-router.get("/:id/shift-history", roleMiddleware(["super_admin", "scheduler", "authorization", "viewer"]), getStaffShiftHistory);
+
 
 /**
  * @swagger
@@ -198,6 +177,39 @@ router.get("/:id/shift-history", roleMiddleware(["super_admin", "scheduler", "au
  *       404:
  *         description: Staff not found
  */
-router.patch("/:id/toggle-mobile-access", roleMiddleware(["super_admin", "authorization"]), toggleMobileAccess);
+router.patch("/:id/toggle-mobile-access", authMiddleware, updatePermissions);
+
+/**
+ * @swagger
+ * /staff/login:
+ *   post:
+ *     summary: Staff login
+ *     tags: [Staff]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *               - password
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 example: staff.com
+ *               password:
+ *                 type: string
+ *                 example: secret123
+ *     responses:
+ *       200:
+ *         description: Login successful, returns JWT token and staff details
+ *       401:
+ *         description: Invalid credentials
+ *       500:
+ *         description: Server error
+ */
+router.post("/login", loginStaff); // ✅ Public login route
+
 
 export default router;

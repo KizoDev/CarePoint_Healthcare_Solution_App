@@ -14,14 +14,20 @@ export default (sequelize, DataTypes) => {
       type: DataTypes.DATE,
       allowNull: false,
     },
-    type: {
-      type: DataTypes.STRING, // sick, vacation, unpaid
-      allowNull: false,
+    reason: {
+      type: DataTypes.STRING,
+      allowNull: true,
     },
-    status: {
-      type: DataTypes.STRING, // pending, approved, rejected
-      defaultValue: "pending",
-    },
+   type: {
+  type: DataTypes.ENUM("sick", "vacation", "unpaid"),
+    allowNull: false,
+  },
+  status: {
+    type: DataTypes.ENUM("pending", "approved", "rejected"),
+    allowNull: false,
+    defaultValue: "pending",
+  },
+
   }, {
     timestamps: true,
     underscored: true,
