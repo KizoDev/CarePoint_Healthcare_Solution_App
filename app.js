@@ -92,13 +92,13 @@ import errorHandler from "./error/errorHandler.js";
 import notFoundError from "./error/notFoundError.js";
 
 // Use routes
-app.use("/carepoint/admin", adminRoutes);
-app.use("/carepoint/staff", staffRoutes);
-app.use("/carepoint/client", clientRoutes);
-app.use("/carepoint/shift", shiftRoutes);
-app.use("/carepoint/notification", notificationRoutes);
-app.use("/carepoint/audit", auditLogRoutes);
-app.use("/carepoint/template", shiftTemplateRoutes);
+app.use("/admin", adminRoutes);
+app.use("/staff", staffRoutes);
+app.use("/client", clientRoutes);
+app.use("/shift", shiftRoutes);
+app.use("/notification", notificationRoutes);
+app.use("/audit", auditLogRoutes);
+app.use("/template", shiftTemplateRoutes);
 app.use("/payroll", payrollRoute);
 app.use("/benefits", benefitRoute);
 app.use("/attendance", attendanceRoute);

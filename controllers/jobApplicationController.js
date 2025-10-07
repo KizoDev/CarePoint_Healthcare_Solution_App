@@ -1,147 +1,191 @@
+// controllers/jobApplicationController.js
 import db from "../models/index.js";
-const { Application, JobPosting, Candidate, AuditLog, Notification, Staff } = db;
+const { JobApplication, JobPosting, AuditLog, Notification } = db;
 
-// Public: apply to a job
-export const applyToJob = async (req, res) => {
+// 📌 Create a new job application (HR only)
+export const createJobApplication = async (req, res) => {
+  const role = req.user.role;
+  if (role !== "HR_admin") {
+    return res.status(401).json({ message: "You are not allowed to access this route" });
+  }
+
   try {
-    const { job_posting_id, candidate_id, cover_letter } = req.body;
+    const { jobId, candidate_name, email, resume_url } = req.body;
 
-    // Validate posting & candidate
-    const posting = await JobPosting.findByPk(job_posting_id);
-    if (!posting || posting.status !== "open") {
-      return res.status(400).json({ message: "Invalid or closed job posting" });
+    // Validate job posting
+    const job = await JobPosting.findByPk(jobId);
+    if (!job) {
+      return res.status(404).json({ message: "Job posting not found" });
     }
-    const candidate = await Candidate.findByPk(candidate_id);
-    if (!candidate) return res.status(400).json({ message: "Invalid candidate" });
 
-    const application = await Application.create({
-      job_posting_id,
-      candidate_id,
-      cover_letter,
-      status: "received",
+    // Prevent applying to closed jobs
+    if (job.status === "closed") {
+      return res.status(400).json({ message: "Cannot apply to a closed job posting" });
+    }
+
+    // Create application
+    const application = await JobApplication.create({
+      jobId,
+      candidate_name,
+      email,
+      resume_url,
+      status: "applied",
     });
 
-    // Audit (system)
+    // 🔒 Audit Log
     await AuditLog.create({
-      admin_id: req.user?.id || null,
-      action: "CREATE_APPLICATION",
+      admin_id: req.user.id,
+      action: "CREATE_JOB_APPLICATION",
       module: "Recruitment",
-      details: `Application ${application.id} created for posting ${job_posting_id}`,
+      details: `HR_admin created a job application for candidate: ${candidate_name}, Job ID: ${jobId}`,
+      timestamp: new Date(),
     });
 
-    // Notify admins (broadcast to dashboard)
+    // // 🔔 Notification (optional - to HR dashboard or internal record)
+    // await Notification.create({
+    //   title: "New Job Application",
+    //   message: `A new job application was created for ${job.title}.`,
+    //   recipientId: req.user.id,
+    //   recipientType: "hr",
+    //   type: "recruitment",
+    // });
+
+    // Realtime event broadcast
     const io = req.app.get("io");
-    if (io) io.emit("recruitment:newApplication", { applicationId: application.id, job_posting_id });
+    if (io) {
+      io.emit("recruitment:newApplication", {
+        message: `New job application for ${job.title}`,
+        application,
+      });
+    }
 
-    // Optional: create a notification row (general)
-    await Notification.create({
-      title: "New Job Application",
-      message: `New application for ${posting.title}`,
-      type: "general",
-      staffId: null,
-    });
-
-    res.status(201).json({ message: "Application submitted", application });
+    res.status(201).json({ message: "Job application created successfully", data: application });
   } catch (error) {
-    res.status(500).json({ message: "Failed to submit application", error: error.message });
+    res.status(500).json({ message: "Failed to create job application", error: error.message });
   }
 };
 
-// Admin: list applications
-export const getApplications = async (req, res) => {
+// 📋 Get all job applications (HR only)
+export const getJobApplications = async (req, res) => {
+  const role = req.user.role;
+  if (role !== "HR_admin") {
+    return res.status(401).json({ message: "You are not allowed to access this route" });
+  }
+
   try {
-    const { status, job_posting_id, candidate_id } = req.query;
+    const { status, jobId, email } = req.query;
     const where = {};
     if (status) where.status = status;
-    if (job_posting_id) where.job_posting_id = job_posting_id;
-    if (candidate_id) where.candidate_id = candidate_id;
+    if (jobId) where.jobId = jobId;
+    if (email) where.email = email;
 
-    const apps = await Application.findAll({
+    const applications = await JobApplication.findAll({
       where,
-      include: [
-        { model: JobPosting, as: "job_posting" },
-        { model: Candidate, as: "candidate" },
-      ],
+      include: [{ model: JobPosting, as: "jobPosting" }],
       order: [["created_at", "DESC"]],
     });
 
-    res.json(apps);
+    res.status(200).json({ message: "Job applications retrieved", data: applications });
   } catch (error) {
-    res.status(500).json({ message: "Failed to fetch applications", error: error.message });
+    res.status(500).json({ message: "Failed to fetch job applications", error: error.message });
   }
 };
 
-export const getApplicationById = async (req, res) => {
+// 🔍 Get single application by ID
+export const getJobApplicationById = async (req, res) => {
+  const role = req.user.role;
+  if (role !== "HR_admin") {
+    return res.status(401).json({ message: "You are not allowed to access this route" });
+  }
+
   try {
-    const app = await Application.findByPk(req.params.id, {
-      include: [
-        { model: JobPosting, as: "job_posting" },
-        { model: Candidate, as: "candidate" },
-      ],
+    const application = await JobApplication.findByPk(req.params.id, {
+      include: [{ model: JobPosting, as: "jobPosting" }],
     });
-    if (!app) return res.status(404).json({ message: "Application not found" });
-    res.json(app);
+
+    if (!application) return res.status(404).json({ message: "Application not found" });
+
+    res.json({ message: "Job application retrieved", data: application });
   } catch (error) {
-    res.status(500).json({ message: "Failed to fetch application", error: error.message });
+    res.status(500).json({ message: "Failed to retrieve job application", error: error.message });
   }
 };
 
-// Admin: update status (shortlisted/interviewed/offered/rejected/hired)
-export const updateApplicationStatus = async (req, res) => {
+// ✏️ Update job application status (HR only)
+export const updateJobApplicationStatus = async (req, res) => {
+  const role = req.user.role;
+  if (role !== "HR_admin") {
+    return res.status(401).json({ message: "You are not allowed to access this route" });
+  }
+
   try {
     const { status } = req.body;
-    const app = await Application.findByPk(req.params.id);
-    if (!app) return res.status(404).json({ message: "Application not found" });
+    const application = await JobApplication.findByPk(req.params.id);
 
-    app.status = status;
-    await app.save();
+    if (!application) return res.status(404).json({ message: "Application not found" });
+
+    application.status = status;
+    await application.save();
 
     await AuditLog.create({
       admin_id: req.user.id,
       action: "UPDATE_APPLICATION_STATUS",
       module: "Recruitment",
-      details: `Application ${app.id} -> ${status}`,
+      details: `HR_admin updated job application (${application.applicationId}) status to ${status}`,
+      timestamp: new Date(),
     });
 
-    // Notify dashboards (admins)
-    const io = req.app.get("io");
-    if (io) io.emit("recruitment:applicationUpdated", { applicationId: app.id, status });
-
-    // Note: If you later add candidate accounts, you can notify them specifically.
     await Notification.create({
-      title: "Application Update",
-      message: `Your application status changed to ${status}`,
-      type: "general",
-      staffId: null,
+      title: "Application Status Updated",
+      message: `Application status for ${application.candidate_name} is now ${status}.`,
+      recipientId: req.user.id,
+      recipientType: "hr",
+      type: "recruitment",
     });
 
-    res.json({ message: "Application status updated", application: app });
+    const io = req.app.get("io");
+    if (io) io.emit("recruitment:applicationUpdated", { applicationId: application.applicationId, status });
+
+    res.json({ message: "Application status updated successfully", data: application });
   } catch (error) {
     res.status(500).json({ message: "Failed to update application", error: error.message });
   }
 };
 
-// Public: withdraw application (if you allow)
+// ❌ Delete/withdraw application (HR only)
 export const withdrawApplication = async (req, res) => {
-  try {
-    const app = await Application.findByPk(req.params.id);
-    if (!app) return res.status(404).json({ message: "Application not found" });
+  const role = req.user.role;
+  if (role !== "HR_admin") {
+    return res.status(401).json({ message: "You are not allowed to access this route" });
+  }
 
-    app.status = "withdrawn";
-    await app.save();
+  try {
+    const application = await JobApplication.findByPk(req.params.id);
+    if (!application) return res.status(404).json({ message: "Application not found" });
+
+    await application.destroy();
 
     await AuditLog.create({
-      admin_id: req.user?.id || null,
-      action: "WITHDRAW_APPLICATION",
+      admin_id: req.user.id,
+      action: "DELETE_JOB_APPLICATION",
       module: "Recruitment",
-      details: `Application ${app.id} withdrawn by candidate`,
+      details: `HR_admin deleted job application (${application.applicationId})`,
+      timestamp: new Date(),
+    });
+
+    await Notification.create({
+      title: "Job Application Deleted",
+      message: `A job application for ${application.candidate_name} has been deleted.`,
+      recipientId: req.user.id,
+      recipientType: "hr",
+      type: "recruitment",
     });
 
     const io = req.app.get("io");
-    if (io) io.emit("recruitment:applicationWithdrawn", { applicationId: app.id });
+    if (io) io.emit("recruitment:applicationDeleted", { applicationId: application.applicationId });
 
-    res.json({ message: "Application withdrawn", application: app });
+    res.json({ message: "Job application deleted successfully" });
   } catch (error) {
-    res.status(500).json({ message: "Failed to withdraw application", error: error.message });
+    res.status(500).json({ message: "Failed to delete application", error: error.message });
   }
 };

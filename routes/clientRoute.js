@@ -8,7 +8,7 @@ import {
   deleteClient,
   getClientShiftHistory,
 } from "../controllers/clientController.js";
-
+import authMiddleware from "../middleware/authMiddleware.js";
 const router = express.Router();
 
 /**
@@ -38,7 +38,7 @@ const router = express.Router();
  *       500:
  *         description: Failed to create client
  */
-router.post("/", createClient);
+router.post("/create",authMiddleware, createClient);
 
 /**
  * @swagger
@@ -52,7 +52,7 @@ router.post("/", createClient);
  *       500:
  *         description: Failed to retrieve clients
  */
-router.get("/", getClients);
+router.get("/get",authMiddleware, getClients);
 
 /**
  * @swagger
@@ -74,7 +74,7 @@ router.get("/", getClients);
  *       500:
  *         description: Error retrieving client
  */
-router.get("/:id", getSingleClient);
+router.get("/get/:id",authMiddleware, getSingleClient);
 
 /**
  * @swagger
@@ -102,7 +102,7 @@ router.get("/:id", getSingleClient);
  *       500:
  *         description: Failed to update client
  */
-router.put("/:id", updateClient);
+router.put("/update/:id",authMiddleware, updateClient);
 
 /**
  * @swagger
@@ -124,7 +124,7 @@ router.put("/:id", updateClient);
  *       500:
  *         description: Failed to delete client
  */
-router.delete("/:id", deleteClient);
+router.delete("/elete/:id",authMiddleware, deleteClient);
 
 /**
  * @swagger
@@ -144,6 +144,6 @@ router.delete("/:id", deleteClient);
  *       500:
  *         description: Failed to fetch client shift history
  */
-router.get("/:clientId/shifts", getClientShiftHistory);
+router.get("/:clientId/shifts",authMiddleware, getClientShiftHistory);
 
 export default router;

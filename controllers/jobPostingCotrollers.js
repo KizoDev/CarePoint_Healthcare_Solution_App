@@ -1,8 +1,13 @@
 import db from "../models/index.js";
 const { JobPosting, AuditLog, Notification } = db;
 
-// Create job posting (admin only)
+// Create Job Posting — HR_admin only
 export const createJobPosting = async (req, res) => {
+  const role = req.user.role;
+  if (role !== "HR_admin") {
+    return res.status(401).json({ message: "You are not allowed to access this route" });
+  }
+
   try {
     const { title, department, description, employment_type, location, salary_range } = req.body;
 
@@ -17,31 +22,39 @@ export const createJobPosting = async (req, res) => {
       created_by: req.user.id,
     });
 
+    // ✅ Audit log
     await AuditLog.create({
       admin_id: req.user.id,
       action: "CREATE_JOB_POSTING",
       module: "Recruitment",
-      details: `JobPosting ${posting.id} created`,
+      details: `HR_admin created job posting: ${posting.title} (${posting.id})`,
+      timestamp: new Date(),
     });
 
-    // Optional broadcast to admin dashboard
+    // ✅ Notify all admins or recruiters (optional broadcast)
     const io = req.app.get("io");
-    if (io) io.emit("recruitment:jobCreated", { posting });
+    if (io) io.emit("recruitment:jobCreated", { message: `New job posted: ${posting.title}` });
 
-    res.status(201).json({ message: "Job posting created", posting });
+    res.status(201).json({ message: "Job posting created successfully", posting });
   } catch (error) {
+    console.error("Error creating job posting:", error);
     res.status(500).json({ message: "Failed to create job posting", error: error.message });
   }
 };
 
-// Get all job postings (public or protected — choose your policy)
+// Get All Job Postings (public or restricted based on policy)
 export const getJobPostings = async (req, res) => {
   try {
     const { status, department, q } = req.query;
     const where = {};
     if (status) where.status = status;
     if (department) where.department = department;
-    if (q) where.title = db.Sequelize.where(db.Sequelize.fn("LOWER", db.Sequelize.col("title")), "LIKE", `%${q.toLowerCase()}%`);
+    if (q)
+      where.title = db.Sequelize.where(
+        db.Sequelize.fn("LOWER", db.Sequelize.col("title")),
+        "LIKE",
+        `%${q.toLowerCase()}%`
+      );
 
     const postings = await JobPosting.findAll({ where, order: [["created_at", "DESC"]] });
     res.json(postings);
@@ -50,6 +63,7 @@ export const getJobPostings = async (req, res) => {
   }
 };
 
+// Get Single Job Posting (public or HR)
 export const getJobPostingById = async (req, res) => {
   try {
     const posting = await JobPosting.findByPk(req.params.id);
@@ -60,8 +74,13 @@ export const getJobPostingById = async (req, res) => {
   }
 };
 
-// Update job posting (admin)
+// Update Job Posting — HR_admin only
 export const updateJobPosting = async (req, res) => {
+  const role = req.user.role;
+  if (role !== "HR_admin") {
+    return res.status(401).json({ message: "You are not allowed to access this route" });
+  }
+
   try {
     const posting = await JobPosting.findByPk(req.params.id);
     if (!posting) return res.status(404).json({ message: "Job posting not found" });
@@ -72,20 +91,32 @@ export const updateJobPosting = async (req, res) => {
       admin_id: req.user.id,
       action: "UPDATE_JOB_POSTING",
       module: "Recruitment",
-      details: `JobPosting ${posting.id} updated`,
+      details: `HR_admin updated job posting: ${posting.title} (${posting.id})`,
+      timestamp: new Date(),
     });
 
     const io = req.app.get("io");
-    if (io) io.emit("recruitment:jobUpdated", { postingId: posting.id });
+    if (io) io.emit("recruitment:jobUpdated", { message: `Job updated: ${posting.title}` });
 
-    res.json({ message: "Job posting updated", posting });
+    await Notification.create({
+      title: "Job Posting Updated",
+      message: `The job "${posting.title}" has been updated.`,
+      type: "recruitment",
+    });
+
+    res.json({ message: "Job posting updated successfully", posting });
   } catch (error) {
     res.status(500).json({ message: "Failed to update job posting", error: error.message });
   }
 };
 
-// Close job posting (admin)
+// Close Job Posting — HR_admin only
 export const closeJobPosting = async (req, res) => {
+  const role = req.user.role;
+  if (role !== "HR_admin") {
+    return res.status(401).json({ message: "You are not allowed to access this route" });
+  }
+
   try {
     const posting = await JobPosting.findByPk(req.params.id);
     if (!posting) return res.status(404).json({ message: "Job posting not found" });
@@ -97,20 +128,32 @@ export const closeJobPosting = async (req, res) => {
       admin_id: req.user.id,
       action: "CLOSE_JOB_POSTING",
       module: "Recruitment",
-      details: `JobPosting ${posting.id} closed`,
+      details: `HR_admin closed job posting: ${posting.title} (${posting.id})`,
+      timestamp: new Date(),
     });
 
     const io = req.app.get("io");
-    if (io) io.emit("recruitment:jobClosed", { postingId: posting.id });
+    if (io) io.emit("recruitment:jobClosed", { message: `Job closed: ${posting.title}` });
 
-    res.json({ message: "Job posting closed", posting });
+    await Notification.create({
+      title: "Job Posting Closed",
+      message: `The job "${posting.title}" has been closed.`,
+      type: "recruitment",
+    });
+
+    res.json({ message: "Job posting closed successfully", posting });
   } catch (error) {
     res.status(500).json({ message: "Failed to close job posting", error: error.message });
   }
 };
 
-// Delete job posting (admin)
+// Delete Job Posting — HR_admin only
 export const deleteJobPosting = async (req, res) => {
+  const role = req.user.role;
+  if (role !== "HR_admin") {
+    return res.status(401).json({ message: "You are not allowed to access this route" });
+  }
+
   try {
     const posting = await JobPosting.findByPk(req.params.id);
     if (!posting) return res.status(404).json({ message: "Job posting not found" });
@@ -121,13 +164,20 @@ export const deleteJobPosting = async (req, res) => {
       admin_id: req.user.id,
       action: "DELETE_JOB_POSTING",
       module: "Recruitment",
-      details: `JobPosting ${req.params.id} deleted`,
+      details: `HR_admin deleted job posting: ${posting.title} (${req.params.id})`,
+      timestamp: new Date(),
     });
 
     const io = req.app.get("io");
-    if (io) io.emit("recruitment:jobDeleted", { postingId: req.params.id });
+    if (io) io.emit("recruitment:jobDeleted", { message: `Job deleted: ${posting.title}` });
 
-    res.json({ message: "Job posting deleted" });
+    await Notification.create({
+      title: "Job Posting Deleted",
+      message: `The job "${posting.title}" has been deleted.`,
+      type: "recruitment",
+    });
+
+    res.json({ message: "Job posting deleted successfully" });
   } catch (error) {
     res.status(500).json({ message: "Failed to delete job posting", error: error.message });
   }

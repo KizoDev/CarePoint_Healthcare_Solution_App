@@ -6,6 +6,10 @@ export default (sequelize, DataTypes) => {
       defaultValue: DataTypes.UUIDV4,
       primaryKey: true,
     },
+    jobId:{
+      type: DataTypes.UUID,
+      allowNull: false,
+    },
     candidate_name: {
       type: DataTypes.STRING,
       allowNull: false,
@@ -19,9 +23,11 @@ export default (sequelize, DataTypes) => {
       allowNull: true,
     },
     status: {
-      type: DataTypes.STRING, // applied, shortlisted, interviewed, hired, rejected
-      defaultValue: "applied",
-    },
+  type: DataTypes.ENUM("applied", "shortlisted", "interviewed", "hired", "rejected"),
+  allowNull: false,
+  defaultValue: "applied",
+  },
+
   }, {
     timestamps: true,
     underscored: true,

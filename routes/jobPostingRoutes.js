@@ -11,7 +11,8 @@ import {
 } from "../controllers/jobPostingCotrollers.js";
 
 const router = express.Router();
-
+// Protect the routes below
+router.use(authMiddleware);
 /**
  * @swagger
  * tags:
@@ -47,7 +48,7 @@ const router = express.Router();
  *       500:
  *         description: Failed to fetch job postings
  */
-router.get("/", getJobPostings);
+router.get("/get",authMiddleware, getJobPostings);
 
 /**
  * @swagger
@@ -70,10 +71,9 @@ router.get("/", getJobPostings);
  *       500:
  *         description: Failed to fetch job posting
  */
-router.get("/:id", getJobPostingById);
+router.get("/get/:id",authMiddleware, getJobPostingById);
 
-// Protect the routes below
-router.use(authMiddleware);
+
 
 /**
  * @swagger
@@ -113,7 +113,7 @@ router.use(authMiddleware);
  *       500:
  *         description: Failed to create job posting
  */
-router.post("/", roleMiddleware(["super_admin", "authorization", "scheduler"]), createJobPosting);
+router.post("/create", authMiddleware, createJobPosting);
 
 /**
  * @swagger
@@ -158,7 +158,7 @@ router.post("/", roleMiddleware(["super_admin", "authorization", "scheduler"]), 
  *       500:
  *         description: Failed to update job posting
  */
-router.put("/:id", roleMiddleware(["super_admin", "authorization"]), updateJobPosting);
+router.put("/:id", authMiddleware, updateJobPosting);
 
 /**
  * @swagger
@@ -182,7 +182,7 @@ router.put("/:id", roleMiddleware(["super_admin", "authorization"]), updateJobPo
  *       500:
  *         description: Failed to close job posting
  */
-router.patch("/:id/close", roleMiddleware(["super_admin", "authorization"]), closeJobPosting);
+router.patch("/:id/close", authMiddleware, closeJobPosting);
 
 /**
  * @swagger
@@ -206,6 +206,6 @@ router.patch("/:id/close", roleMiddleware(["super_admin", "authorization"]), clo
  *       500:
  *         description: Failed to delete job posting
  */
-router.delete("/:id", roleMiddleware(["super_admin"]), deleteJobPosting);
+router.delete("/:id", authMiddleware, deleteJobPosting);
 
 export default router;

@@ -56,7 +56,7 @@ router.use(authMiddleware);
  *       500:
  *         description: Failed to create benefit plan
  */
-router.post("/plans", authorizeRoles("super_admin", "authorization"), createBenefitPlan);
+router.post("/plans",authMiddleware, createBenefitPlan);
 
 /**
  * @swagger
@@ -72,7 +72,7 @@ router.post("/plans", authorizeRoles("super_admin", "authorization"), createBene
  *       500:
  *         description: Failed to fetch benefit plans
  */
-router.get("/plans", authorizeRoles("super_admin", "authorization", "viewer"), getBenefitPlans);
+router.get("/plans",authMiddleware, getBenefitPlans);
 
 /**
  * @swagger
@@ -102,7 +102,7 @@ router.get("/plans", authorizeRoles("super_admin", "authorization", "viewer"), g
  *       500:
  *         description: Failed to assign benefit
  */
-router.post("/assign", authorizeRoles("super_admin", "authorization"), assignStaffBenefit);
+router.post("/assign", authMiddleware, assignStaffBenefit);
 
 /**
  * @swagger
@@ -125,7 +125,7 @@ router.post("/assign", authorizeRoles("super_admin", "authorization"), assignSta
  *       500:
  *         description: Failed to fetch staff benefits
  */
-router.get("/staff", authorizeRoles("super_admin", "authorization", "viewer"), getStaffBenefits);
+router.get("/staff", authMiddleware, getStaffBenefits);
 
 /**
  * @swagger
@@ -150,6 +150,6 @@ router.get("/staff", authorizeRoles("super_admin", "authorization", "viewer"), g
  *       500:
  *         description: Failed to remove staff benefit
  */
-router.delete("/assign/:id", authorizeRoles("super_admin", "authorization"), removeStaffBenefit);
+router.delete("/assign/:id", authMiddleware, removeStaffBenefit);
 
 export default router;

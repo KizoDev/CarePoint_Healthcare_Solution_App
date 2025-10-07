@@ -26,6 +26,12 @@ export default (sequelize, DataTypes) => {
   Client.associate = (models) => {
     Client.hasMany(models.Shift, { foreignKey: "client_id", as: "shifts" });
   };
+   Client.associate = (models) => {
+    Client.belongsTo(models.Admin, {
+      foreignKey: "admin_id",
+      as: "admin",
+    });
+  };
 
   return Client;
 };

@@ -2,15 +2,16 @@ import express from "express";
 import authMiddleware from "../middleware/authMiddleware.js";
 import { roleMiddleware } from "../middleware/roleMiddleware.js";
 import {
-  applyToJob,
-  getApplications,
-  getApplicationById,
-  updateApplicationStatus,
+  createJobApplication,
+  getJobApplications,
+  getJobApplicationById,
+  updateJobApplicationStatus,
   withdrawApplication,
 } from "../controllers/jobApplicationController.js";
 
 const router = express.Router();
-
+// ---------- Protected Admin routes ----------
+router.use(authMiddleware);
 /**
  * @swagger
  * tags:
@@ -51,7 +52,7 @@ const router = express.Router();
  *       500:
  *         description: Failed to submit application
  */
-router.post("/", applyToJob);
+router.post("/apply",authMiddleware, createJobApplication);
 
 /**
  * @swagger
@@ -74,10 +75,9 @@ router.post("/", applyToJob);
  *       500:
  *         description: Failed to withdraw application
  */
-router.patch("/:id/withdraw", withdrawApplication);
+router.patch("/:id/withdraw",authMiddleware, withdrawApplication);
 
-// ---------- Protected Admin routes ----------
-router.use(authMiddleware);
+
 
 /**
  * @swagger
@@ -109,7 +109,7 @@ router.use(authMiddleware);
  *       500:
  *         description: Failed to fetch applications
  */
-router.get("/", roleMiddleware(["super_admin", "authorization"]), getApplications);
+router.get("/get", authMiddleware, getJobApplications);
 
 /**
  * @swagger
@@ -134,7 +134,7 @@ router.get("/", roleMiddleware(["super_admin", "authorization"]), getApplication
  *       500:
  *         description: Failed to fetch application
  */
-router.get("/:id", roleMiddleware(["super_admin", "authorization"]), getApplicationById);
+router.get("/get/:id", authMiddleware, getJobApplicationById);
 
 /**
  * @swagger
@@ -172,6 +172,6 @@ router.get("/:id", roleMiddleware(["super_admin", "authorization"]), getApplicat
  *       500:
  *         description: Failed to update status
  */
-router.patch("/:id/status", roleMiddleware(["super_admin", "authorization"]), updateApplicationStatus);
+router.patch("/:id/status", authMiddleware, updateJobApplicationStatus);
 
 export default router;
