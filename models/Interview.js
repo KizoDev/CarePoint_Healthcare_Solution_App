@@ -6,14 +6,27 @@ export default (sequelize, DataTypes) => {
       defaultValue: DataTypes.UUIDV4,
       primaryKey: true,
     },
+    application_id:{
+      type: DataTypes.UUID,
+      allowNull: false,
+    },
+    interviewer_staff_id:{
+      type: DataTypes.UUID,
+      allowNull: false,
+    },
     scheduled_date: {
       type: DataTypes.DATE,
       allowNull: false,
     },
-    result: {
-      type: DataTypes.STRING, // passed, failed, pending
-      defaultValue: "pending",
-    },
+  status: {
+  type: DataTypes.ENUM(
+    "scheduled",  
+    "rescheduled", 
+    "completed",  
+    "cancelled",   ),
+  defaultValue: "scheduled",
+  },
+
     notes: {
       type: DataTypes.TEXT,
       allowNull: true,

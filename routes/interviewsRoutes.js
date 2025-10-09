@@ -62,7 +62,7 @@ router.use(authMiddleware);
  *       500:
  *         description: Failed to schedule interview
  */
-router.post("/", roleMiddleware(["super_admin", "authorization"]), scheduleInterview);
+router.post("/create", authMiddleware, scheduleInterview);
 
 /**
  * @swagger
@@ -92,7 +92,7 @@ router.post("/", roleMiddleware(["super_admin", "authorization"]), scheduleInter
  *       500:
  *         description: Failed to update interview
  */
-router.put("/:id", roleMiddleware(["super_admin", "authorization"]), updateInterview);
+router.put("/:id",authMiddleware, updateInterview);
 
 /**
  * @swagger
@@ -116,7 +116,7 @@ router.put("/:id", roleMiddleware(["super_admin", "authorization"]), updateInter
  *       500:
  *         description: Failed to cancel interview
  */
-router.patch("/:id/cancel", roleMiddleware(["super_admin", "authorization"]), cancelInterview);
+router.patch("/:id/cancel", authMiddleware, cancelInterview);
 
 /**
  * @swagger
@@ -145,7 +145,7 @@ router.patch("/:id/cancel", roleMiddleware(["super_admin", "authorization"]), ca
  *       500:
  *         description: Failed to fetch interviews
  */
-router.get("/", roleMiddleware(["super_admin", "authorization"]), getInterviews);
+router.get("/",authMiddleware, getInterviews);
 
 /**
  * @swagger
@@ -169,6 +169,6 @@ router.get("/", roleMiddleware(["super_admin", "authorization"]), getInterviews)
  *       500:
  *         description: Failed to fetch interview
  */
-router.get("/:id", roleMiddleware(["super_admin", "authorization"]), getInterviewById);
+router.get("/:id", authMiddleware, getInterviewById);
 
 export default router;

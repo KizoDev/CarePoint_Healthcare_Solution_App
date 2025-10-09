@@ -131,7 +131,7 @@ router.get("/getOne/:id", authMiddleware, getSingleStaff);
  *       404:
  *         description: Staff not found
  */
-router.put("/:id", authMiddleware, updateStaff);
+router.put("/update/:id", authMiddleware, updateStaff);
 
 /**
  * @swagger
@@ -153,7 +153,7 @@ router.put("/:id", authMiddleware, updateStaff);
  *       404:
  *         description: Staff not found
  */
-router.delete("/:id",authMiddleware, deleteStaff);
+router.delete("/delete/:id",authMiddleware, deleteStaff);
 
 
 
