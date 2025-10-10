@@ -5,6 +5,7 @@ import {
   getAllTemplates,
   deleteTemplate
 } from "../controllers/shiftTemplateControllers.js";
+import authMiddleware from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
@@ -14,6 +15,7 @@ const router = express.Router();
  *   name: ShiftTemplates
  *   description: Manage reusable shift templates
  */
+router.use(authMiddleware);
 
 /**
  * @swagger
@@ -46,7 +48,7 @@ const router = express.Router();
  *       500:
  *         description: Error creating template
  */
-router.post("/", createShiftTemplate);
+router.post("/create",authMiddleware, createShiftTemplate);
 
 /**
  * @swagger
@@ -62,7 +64,7 @@ router.post("/", createShiftTemplate);
  *       500:
  *         description: Error fetching templates
  */
-router.get("/", getAllTemplates);
+router.get("/get", authMiddleware, getAllTemplates);
 
 /**
  * @swagger
@@ -84,6 +86,6 @@ router.get("/", getAllTemplates);
  *       500:
  *         description: Error deleting template
  */
-router.delete("/:id", deleteTemplate);
+router.delete("/delete/:id",authMiddleware, deleteTemplate);
 
 export default router;

@@ -1,24 +1,50 @@
 // controllers/interviewController.js
 import db from "../models/index.js";
 const { Interview, JobApplication, Staff, AuditLog, Notification } = db;
+import nodemailer from "nodemailer";
 
 // 🟩 HR Only: Schedule Interview
-export const scheduleInterview = async (req, res) => {
-  const role = req.user.role;
-  if (role !== "HR_admin") {
-    return res.status(401).json({ message: "You are not allowed to access this route" });
-  }
 
+// Helper for audit logs
+const logAudit = async (adminId, action, module, details) => {
   try {
+    await AuditLog.create({ admin_id: adminId, action, module, details });
+  } catch (e) {
+    console.error("AuditLog failed:", e.message);
+  }
+};
+
+// Helper for sending emails (configure .env)
+let mailTransporter = nodemailer.createTransport({
+      host: "mail.skilltopims.com",  
+      port: 587, 
+      secure: false, 
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS,
+      },
+      tls: {
+        rejectUnauthorized: false
+      }
+    });
+
+// ✅ Schedule Interview (HR Admin only)
+export const scheduleInterview = async (req, res) => {
+  try {
+    const role = req.user.role;
+    if (role !== "HR_admin") {
+      return res.status(401).json({ message: "You are not allowed to access this route" });
+    }
+
     const { applicationId, interviewer_staff_id, scheduled_date, notes } = req.body;
 
-    // Validate job application
+    // Fetch job application with candidate info
     const app = await JobApplication.findByPk(applicationId);
     if (!app) return res.status(404).json({ message: "Application not found" });
 
     // Create interview
     const interview = await Interview.create({
-      application_id: applicationId,
+      applicationId,
       interviewer_staff_id,
       scheduled_date,
       notes,
@@ -30,36 +56,44 @@ export const scheduleInterview = async (req, res) => {
     await app.save();
 
     // 🧾 Audit log
-    await AuditLog.create({
-      admin_id: req.user.id,
-      action: "SCHEDULE_INTERVIEW",
-      module: "Recruitment",
-      details: `HR_admin scheduled interview (${interview.id}) for application ${applicationId}`,
-      timestamp: new Date(),
-    });
+    await logAudit(req.user.id, "SCHEDULE_INTERVIEW", "Recruitment", `Interview ${interview.id} scheduled for ${applicationId}`);
 
-    // 🔔 Notify interviewer
+    // 🔔 Notify interviewer (staff)
     const io = req.app.get("io");
     if (io && interviewer_staff_id) {
       io.to(`user_${interviewer_staff_id}`).emit("recruitment:interviewScheduled", {
-        message: "You have been assigned to an interview.",
         interviewId: interview.id,
+        applicationId,
         scheduled_date,
       });
     }
 
+    // Save notification in DB for interviewer
     await Notification.create({
-      title: "Interview Scheduled",
-      message: `You have an interview scheduled on ${scheduled_date}.`,
+      title: "Interview Assigned",
+      message: `You have an interview scheduled on ${new Date(scheduled_date).toLocaleString()}`,
       type: "recruitment",
-      staffId: interviewer_staff_id,
+      recipientId: interviewer_staff_id,
+      recipientType: "staff",
     });
+
+    // ✉️ Send email to applicant
+    let mailOption = {
+      from: process.env.EMAIL_USER,
+      to: app.candidate_email,
+      subject: "Your Interview is Scheduled",
+      html: `Dear ${app.candidate_name},\n\nYour interview for the ${app.job_title || "position"} has been scheduled on ${new Date(
+        scheduled_date
+      ).toLocaleString()}.\n\nBest of luck!\n\nCarePoint HR Team`
+    };
 
     res.status(201).json({ message: "Interview scheduled successfully", data: interview });
   } catch (error) {
+    console.error(error);
     res.status(500).json({ message: "Failed to schedule interview", error: error.message });
   }
 };
+
 
 // 🟨 HR Only: Update Interview
 export const updateInterview = async (req, res) => {

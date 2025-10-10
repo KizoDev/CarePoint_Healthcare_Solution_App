@@ -12,18 +12,28 @@ export const createJobApplication = async (req, res) => {
   try {
     const { jobId, candidate_name, email, resume_url } = req.body;
 
-    // Validate job posting
+    // ✅ 1. Validate job posting
     const job = await JobPosting.findByPk(jobId);
     if (!job) {
       return res.status(404).json({ message: "Job posting not found" });
     }
 
-    // Prevent applying to closed jobs
+    // ✅ 2. Prevent applying to closed jobs
     if (job.status === "closed") {
       return res.status(400).json({ message: "Cannot apply to a closed job posting" });
     }
 
-    // Create application
+    // ✅ 3. Check if this email already applied for this job
+    const existingApplication = await JobApplication.findOne({
+      where: { jobId, email },
+    });
+    if (existingApplication) {
+      return res.status(400).json({
+        message: "This email has already applied for this job",
+      });
+    }
+
+    // ✅ 4. Create application
     const application = await JobApplication.create({
       jobId,
       candidate_name,
@@ -32,7 +42,7 @@ export const createJobApplication = async (req, res) => {
       status: "applied",
     });
 
-    // 🔒 Audit Log
+    // ✅ 5. Audit Log
     await AuditLog.create({
       admin_id: req.user.id,
       action: "CREATE_JOB_APPLICATION",
@@ -41,16 +51,7 @@ export const createJobApplication = async (req, res) => {
       timestamp: new Date(),
     });
 
-    // // 🔔 Notification (optional - to HR dashboard or internal record)
-    // await Notification.create({
-    //   title: "New Job Application",
-    //   message: `A new job application was created for ${job.title}.`,
-    //   recipientId: req.user.id,
-    //   recipientType: "hr",
-    //   type: "recruitment",
-    // });
-
-    // Realtime event broadcast
+    // ✅ 6. Realtime notification
     const io = req.app.get("io");
     if (io) {
       io.emit("recruitment:newApplication", {
@@ -59,11 +60,18 @@ export const createJobApplication = async (req, res) => {
       });
     }
 
-    res.status(201).json({ message: "Job application created successfully", data: application });
+    res.status(201).json({
+      message: "Job application created successfully",
+      data: application,
+    });
   } catch (error) {
-    res.status(500).json({ message: "Failed to create job application", error: error.message });
+    res.status(500).json({
+      message: "Failed to create job application",
+      error: error.message,
+    });
   }
 };
+
 
 // 📋 Get all job applications (HR only)
 export const getJobApplications = async (req, res) => {

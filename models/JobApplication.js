@@ -23,7 +23,7 @@ export default (sequelize, DataTypes) => {
       allowNull: true,
     },
     status: {
-  type: DataTypes.ENUM("applied", "shortlisted", "interviewed", "hired", "rejected"),
+  type: DataTypes.ENUM("applied", "shortlisted", "interview_scheduled", "hired", "rejected"),
   allowNull: false,
   defaultValue: "applied",
   },

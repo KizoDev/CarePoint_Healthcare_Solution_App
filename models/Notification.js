@@ -14,7 +14,7 @@ export default (sequelize, DataTypes) => {
       allowNull: false,
     },
     type: {
-      type: DataTypes.ENUM("shift", "document", "general", "system", "client"),
+      type: DataTypes.ENUM("shift","recruitment","payroll", "document", "general","learning", "system", "client"),
       defaultValue: "general",
     },
     recipientId: {
@@ -23,7 +23,7 @@ export default (sequelize, DataTypes) => {
     },
     recipientType: {
       type: DataTypes.ENUM("staff", "admin", "client"),
-      allowNull: false,
+      allowNull: true,
     },
     isRead: {
       type: DataTypes.BOOLEAN,

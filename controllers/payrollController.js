@@ -1,120 +1,181 @@
-// controllers/payrollController.js
 import db from "../models/index.js";
 const { PayrollRun, Payslip, Staff, AuditLog, Notification } = db;
 
-const logAudit = async (adminId, action, moduleName, details) => {
-  try {
-    await AuditLog.create({ admin_id: adminId || null, action, module: moduleName, details });
-  } catch (e) {
-    console.error("AuditLog failed:", e.message);
-  }
-};
-
-// Create payroll run and (optionally) generate payslips for selected staff or all staff
+// ✅ Create Payroll Run (no automatic payslip creation)
 export const createPayrollRun = async (req, res) => {
   try {
-    const { period_start, period_end, staffIds = null } = req.body; // staffIds optional array
-    const adminId = req.user?.id;
+    const { period_start, period_end, notes, title } = req.body;
+    const adminId = req.user.id;
 
-    const run = await PayrollRun.create({ period_start, period_end });
+    // Create the payroll period
+    const payrollRun = await PayrollRun.create({
+      period_start,
+      period_end,
+      notes,
+      title,
+      processed_at: new Date(),
+    });
 
-    // Select staff
-    const staffWhere = staffIds && staffIds.length ? { id: staffIds } : {};
-    const staffList = await Staff.findAll({ where: staffWhere });
+    // 🧾 Audit Log
+    await AuditLog.create({
+      admin_id: adminId,
+      action: "CREATE_PAYROLL_RUN",
+      module: "Payroll",
+      details: `Payroll run ${payrollRun.payrollRunId} created (no payslips yet)`,
+      timestamp: new Date(),
+    });
 
-    // Create payslips (basic placeholders -> finance can update amounts)
-    const payslips = [];
-    for (const s of staffList) {
-      const slip = await Payslip.create({
-        payroll_run_id: run.payrollRunId,
-        staff_id: s.staff_id || s.id,
-        gross_pay: 0.0,
-        deductions: 0.0,
-        net_pay: 0.0,
-      });
-      payslips.push(slip);
-
-      // socket + DB notification
-      const io = req.app.get("io");
-      if (io) io.to(`user_${s.staff_id || s.id}`).emit("payslip:created", { message: "Payslip available", payslip: slip });
-      await Notification.create({ title: "Payslip available", message: "A new payslip has been generated for you", staffId: s.staff_id || s.id });
-    }
-
-    await logAudit(adminId, "CREATE_PAYROLL_RUN", "Payroll", `PayrollRun ${run.payrollRunId} created, payslips: ${payslips.length}`);
-
-    res.status(201).json({ message: "Payroll run created", payrollRun: run, payslipsCount: payslips.length });
-  } catch (err) {
-    res.status(500).json({ message: "Failed to create payroll run", error: err.message });
+    res.status(201).json({
+      message: "Payroll run created successfully. Add payslips separately.",
+      payrollRun,
+    });
+  } catch (error) {
+    res.status(500).json({ message: "Failed to create payroll run", error: error.message });
   }
 };
 
-// Get all payroll runs (with paging)
+// ✅ Get all Payroll Runs
 export const getPayrollRuns = async (req, res) => {
   try {
     const { page = 1, limit = 20 } = req.query;
     const offset = (page - 1) * limit;
+
     const runs = await PayrollRun.findAndCountAll({
       include: [{ model: Payslip, as: "payslips" }],
       order: [["created_at", "DESC"]],
       limit: parseInt(limit),
       offset: parseInt(offset),
     });
-    res.json({ total: runs.count, page: parseInt(page), pages: Math.ceil(runs.count / limit), data: runs.rows });
-  } catch (err) {
-    res.status(500).json({ message: "Failed to fetch payroll runs", error: err.message });
+
+    res.status(200).json({
+      total: runs.count,
+      page: parseInt(page),
+      pages: Math.ceil(runs.count / limit),
+      data: runs.rows,
+    });
+  } catch (error) {
+    res.status(500).json({ message: "Failed to fetch payroll runs", error: error.message });
   }
 };
 
+// ✅ Get Payroll Run by ID
 export const getPayrollRunById = async (req, res) => {
   try {
-    const run = await PayrollRun.findByPk(req.params.id, { include: [{ model: Payslip, as: "payslips" }] });
+    const run = await PayrollRun.findByPk(req.params.id, {
+      include: [{ model: Payslip, as: "payslips" }],
+    });
     if (!run) return res.status(404).json({ message: "Payroll run not found" });
+
     res.json(run);
-  } catch (err) {
-    res.status(500).json({ message: "Failed to fetch payroll run", error: err.message });
+  } catch (error) {
+    res.status(500).json({ message: "Failed to fetch payroll run", error: error.message });
   }
 };
 
-// Update a payroll run metadata
+// ✅ Update Payroll Run
 export const updatePayrollRun = async (req, res) => {
   try {
     const run = await PayrollRun.findByPk(req.params.id);
     if (!run) return res.status(404).json({ message: "Payroll run not found" });
 
     await run.update(req.body);
-    await logAudit(req.user?.id, "UPDATE_PAYROLL_RUN", "Payroll", `PayrollRun ${run.payrollRunId} updated`);
-    res.json({ message: "Payroll run updated", data: run });
-  } catch (err) {
-    res.status(500).json({ message: "Failed to update payroll run", error: err.message });
+
+    await AuditLog.create({
+      admin_id: req.user.id,
+      action: "UPDATE_PAYROLL_RUN",
+      module: "Payroll",
+      details: `Payroll run ${run.payrollRunId} updated`,
+      timestamp: new Date(),
+    });
+
+    res.json({ message: "Payroll run updated successfully", data: run });
+  } catch (error) {
+    res.status(500).json({ message: "Failed to update payroll run", error: error.message });
   }
 };
 
-// Payslip endpoints
+// ✅ Create Individual Payslip
+export const createPayslip = async (req, res) => {
+  try {
+    const { payrollRunId, staffId, basic_salary,gross_pay, deductions, net_pay } = req.body;
+
+    const payslip = await Payslip.create({
+      payrollRunId,
+      staffId,
+      basic_salary,
+      gross_pay,
+      deductions,
+      net_pay,
+    });
+
+    await AuditLog.create({
+      admin_id: req.user.id,
+      action: "CREATE_PAYSLIP",
+      module: "Payroll",
+      details: `Payslip created for staff ${staffId} under payroll ${payrollRunId}`,
+      timestamp: new Date(),
+    });
+
+    const io = req.app.get("io");
+    if (io) {
+      io.to(`user_${staffId}`).emit("payslip:created", {
+        message: "Your payslip has been generated.",
+        payslip,
+      });
+    }
+
+    await Notification.create({
+      title: "Payslip Created",
+      message: "Your payslip has been created successfully.",
+      type: "payroll",
+      recipientId: staffId,
+    });
+
+    res.status(201).json({ message: "Payslip created successfully", payslip });
+  } catch (error) {
+    res.status(500).json({ message: "Failed to create payslip", error: error.message });
+  }
+};
+
+// ✅ Get All Payslips
 export const getPayslips = async (req, res) => {
   try {
-    const { staffId, payrollRunId, page = 1, limit = 50 } = req.query;
+    const { staffId, payrollRunId, page = 1, limit = 20 } = req.query;
     const where = {};
     if (staffId) where.staff_id = staffId;
     if (payrollRunId) where.payroll_run_id = payrollRunId;
+
     const offset = (page - 1) * limit;
-    const { count, rows } = await Payslip.findAndCountAll({ where, order: [["issued_date", "DESC"]], limit: parseInt(limit), offset: parseInt(offset) });
-    res.json({ total: count, page: parseInt(page), pages: Math.ceil(count / limit), data: rows });
-  } catch (err) {
-    res.status(500).json({ message: "Failed to fetch payslips", error: err.message });
+    const { count, rows } = await Payslip.findAndCountAll({
+      where,
+      order: [["issued_date", "DESC"]],
+      limit: parseInt(limit),
+      offset: parseInt(offset),
+    });
+
+    res.status(200).json({
+      total: count,
+      page: parseInt(page),
+      pages: Math.ceil(count / limit),
+      data: rows,
+    });
+  } catch (error) {
+    res.status(500).json({ message: "Failed to fetch payslips", error: error.message });
   }
 };
 
+// ✅ Get Single Payslip by ID
 export const getPayslipById = async (req, res) => {
   try {
     const slip = await Payslip.findByPk(req.params.id);
     if (!slip) return res.status(404).json({ message: "Payslip not found" });
     res.json(slip);
-  } catch (err) {
-    res.status(500).json({ message: "Failed to fetch payslip", error: err.message });
+  } catch (error) {
+    res.status(500).json({ message: "Failed to fetch payslip", error: error.message });
   }
 };
 
-// Update payslip (finance) - partial amounts
+// ✅ Update Payslip
 export const updatePayslip = async (req, res) => {
   try {
     const slip = await Payslip.findByPk(req.params.id);
@@ -122,19 +183,36 @@ export const updatePayslip = async (req, res) => {
 
     await slip.update(req.body);
 
-    await logAudit(req.user?.id, "UPDATE_PAYSLIP", "Payroll", `Payslip ${slip.payslipId} updated`);
-    // Notify staff of update
-    const io = req.app.get("io");
-    if (io) io.to(`user_${slip.staff_id}`).emit("payslip:updated", { payslip: slip });
-    await Notification.create({ title: "Payslip updated", message: "Your payslip has been updated", staffId: slip.staff_id });
+    await AuditLog.create({
+      admin_id: req.user.id,
+      action: "UPDATE_PAYSLIP",
+      module: "Payroll",
+      details: `Payslip ${slip.payslipId} updated`,
+      timestamp: new Date(),
+    });
 
-    res.json({ message: "Payslip updated", data: slip });
-  } catch (err) {
-    res.status(500).json({ message: "Failed to update payslip", error: err.message });
+    const io = req.app.get("io");
+    if (io) {
+      io.to(`user_${slip.staff_id}`).emit("payslip:updated", {
+        message: "Your payslip has been updated.",
+        payslip: slip,
+      });
+    }
+
+    await Notification.create({
+      title: "Payslip Updated",
+      message: "Your payslip details have been updated.",
+      type: "payroll",
+      staffId: slip.staff_id,
+    });
+
+    res.json({ message: "Payslip updated successfully", payslip: slip });
+  } catch (error) {
+    res.status(500).json({ message: "Failed to update payslip", error: error.message });
   }
 };
 
-// Mark payslip as paid (or a status change)
+// ✅ Mark Payslip as Paid
 export const markPayslipPaid = async (req, res) => {
   try {
     const slip = await Payslip.findByPk(req.params.id);
@@ -144,13 +222,31 @@ export const markPayslipPaid = async (req, res) => {
     slip.paid_at = new Date();
     await slip.save();
 
-    await logAudit(req.user?.id, "MARK_PAYSLIP_PAID", "Payroll", `Payslip ${slip.payslipId} marked paid`);
-    const io = req.app.get("io");
-    if (io) io.to(`user_${slip.staff_id}`).emit("payslip:paid", { payslip: slip });
-    await Notification.create({ title: "Payslip paid", message: "Your payslip has been paid", staffId: slip.staff_id });
+    await AuditLog.create({
+      admin_id: req.user.id,
+      action: "MARK_PAYSLIP_PAID",
+      module: "Payroll",
+      details: `Payslip ${slip.payslipId} marked as paid`,
+      timestamp: new Date(),
+    });
 
-    res.json({ message: "Payslip marked as paid", data: slip });
-  } catch (err) {
-    res.status(500).json({ message: "Failed to mark payslip as paid", error: err.message });
+    const io = req.app.get("io");
+    if (io) {
+      io.to(`user_${slip.staff_id}`).emit("payslip:paid", {
+        message: "Your payslip has been marked as paid.",
+        payslip: slip,
+      });
+    }
+
+    await Notification.create({
+      title: "Payslip Paid",
+      message: "Your payslip has been marked as paid.",
+      type: "payroll",
+      staffId: slip.staff_id,
+    });
+
+    res.json({ message: "Payslip marked as paid successfully", data: slip });
+  } catch (error) {
+    res.status(500).json({ message: "Failed to mark payslip as paid", error: error.message });
   }
 };

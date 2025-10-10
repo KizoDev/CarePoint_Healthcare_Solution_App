@@ -99,7 +99,7 @@ app.use("/shift", shiftRoutes);
 app.use("/notification", notificationRoutes);
 app.use("/audit", auditLogRoutes);
 app.use("/template", shiftTemplateRoutes);
-app.use("/payroll", payrollRoute);
+app.use("/", payrollRoute);
 app.use("/benefits", benefitRoute);
 app.use("/attendance", attendanceRoute);
 app.use("/performance", performanceRoute);

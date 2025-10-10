@@ -74,7 +74,7 @@ router.get("/all", getAllShifts);
  *       200:
  *         description: Filtered list of shifts
  */
-router.get("/", filterShifts);
+router.get("/get", filterShifts);
 
 /**
  * @swagger
@@ -96,7 +96,7 @@ router.get("/", filterShifts);
  *       404:
  *         description: Shift not found
  */
-router.get("/:id", getSingleShift);
+router.get("/get/:id", getSingleShift);
 
 /**
  * @swagger
@@ -129,7 +129,7 @@ router.get("/:id", getSingleShift);
  *       201:
  *         description: Shift created successfully
  */
-router.post("/", createShift);
+router.post("/create", createShift);
 
 /**
  * @swagger
@@ -206,9 +206,7 @@ router.delete("/:id", deleteShift);
  *       404:
  *         description: Shift not found
  */
-router.post(
-  "/assign",
-  roleMiddleware(["super_admin", "scheduler"]),
+router.post("/assign",roleMiddleware(["super_admin", "scheduler"]),
   assignStaffToShift
 );
 /**

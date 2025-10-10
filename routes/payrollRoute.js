@@ -1,4 +1,3 @@
-// routes/payroll.js
 import express from "express";
 import authMiddleware from "../middleware/authMiddleware.js";
 import {
@@ -6,6 +5,7 @@ import {
   getPayrollRuns,
   getPayrollRunById,
   updatePayrollRun,
+  createPayslip,
   getPayslips,
   getPayslipById,
   updatePayslip,
@@ -13,10 +13,6 @@ import {
 } from "../controllers/payrollController.js";
 
 const router = express.Router();
-const authorizeRoles = (...roles) => (req, res, next) => {
-  if (!roles.includes(req.user?.role)) return res.status(403).json({ message: "Forbidden" });
-  next();
-};
 
 router.use(authMiddleware);
 
@@ -24,14 +20,14 @@ router.use(authMiddleware);
  * @swagger
  * tags:
  *   name: Payroll
- *   description: Payroll management APIs
+ *   description: Payroll and Payslip Management APIs
  */
 
 /**
  * @swagger
- * /payroll/runs:
+ * /payroll/run/create:
  *   post:
- *     summary: Create a payroll run
+ *     summary: Create a new payroll run
  *     tags: [Payroll]
  *     security:
  *       - bearerAuth: []
@@ -41,24 +37,25 @@ router.use(authMiddleware);
  *         application/json:
  *           schema:
  *             type: object
+ *             required:
+ *               - period_start
+ *               - period_end
  *             properties:
  *               period_start:
  *                 type: string
  *                 format: date
+ *                 example: "2025-01-01"
  *               period_end:
  *                 type: string
  *                 format: date
- *               staffIds:
- *                 type: array
- *                 items:
- *                   type: integer
+ *                 example: "2025-01-31"
  *     responses:
  *       201:
- *         description: Payroll run created
+ *         description: Payroll run created successfully
  *       500:
  *         description: Failed to create payroll run
  */
-router.post("/runs", authorizeRoles("super_admin", "authorization"), createPayrollRun);
+router.post("/payroll/create",authMiddleware, createPayrollRun);
 
 /**
  * @swagger
@@ -69,69 +66,118 @@ router.post("/runs", authorizeRoles("super_admin", "authorization"), createPayro
  *     security:
  *       - bearerAuth: []
  *     parameters:
- *       - name: page
- *         in: query
+ *       - in: query
+ *         name: page
  *         schema:
  *           type: integer
- *       - name: limit
- *         in: query
+ *         description: Page number
+ *       - in: query
+ *         name: limit
  *         schema:
  *           type: integer
+ *         description: Number of results per page
  *     responses:
  *       200:
  *         description: List of payroll runs
  */
-router.get("/runs", authorizeRoles("super_admin", "authorization", "viewer"), getPayrollRuns);
+router.get("/payroll/get",authMiddleware,  getPayrollRuns);
 
 /**
  * @swagger
- * /payroll/runs/{id}:
+ * /payroll/run/{id}:
  *   get:
- *     summary: Get payroll run by ID
+ *     summary: Get a payroll run by ID
  *     tags: [Payroll]
  *     security:
  *       - bearerAuth: []
  *     parameters:
- *       - name: id
- *         in: path
+ *       - in: path
+ *         name: id
  *         required: true
  *         schema:
- *           type: integer
+ *           type: string
  *     responses:
  *       200:
  *         description: Payroll run details
  *       404:
- *         description: Not found
+ *         description: Payroll run not found
  */
-router.get("/runs/:id", authorizeRoles("super_admin", "authorization", "viewer"), getPayrollRunById);
+router.get("/payroll/get/:id",authMiddleware,  getPayrollRunById);
 
 /**
  * @swagger
- * /payroll/runs/{id}:
+ * /payroll/run/{id}:
  *   put:
- *     summary: Update payroll run
+ *     summary: Update a payroll run
  *     tags: [Payroll]
  *     security:
  *       - bearerAuth: []
  *     parameters:
- *       - name: id
- *         in: path
+ *       - in: path
+ *         name: id
  *         required: true
  *         schema:
- *           type: integer
+ *           type: string
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
  *             type: object
+ *             example:
+ *               period_start: "2025-01-01"
+ *               period_end: "2025-01-31"
  *     responses:
  *       200:
  *         description: Payroll run updated
  *       404:
- *         description: Not found
+ *         description: Payroll run not found
  */
-router.put("/runs/:id", authorizeRoles("super_admin", "authorization"), updatePayrollRun);
+router.put("/payroll/update/:id",authMiddleware,  updatePayrollRun);
+
+/**
+ * @swagger
+ * /payroll/payslip/create:
+ *   post:
+ *     summary: Create a payslip for a staff under a payroll run
+ *     tags: [Payroll]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - payroll_run_id
+ *               - staff_id
+ *               - gross_pay
+ *               - deductions
+ *               - net_pay
+ *             properties:
+ *               payroll_run_id:
+ *                 type: string
+ *                 example: "3d5f204c-bd2e-4f88-a92d-123456789abc"
+ *               staff_id:
+ *                 type: string
+ *                 example: "7d9a72b4-f53e-49b8-ae23-9f987e1c22bb"
+ *               gross_pay:
+ *                 type: number
+ *                 example: 500000
+ *               deductions:
+ *                 type: number
+ *                 example: 50000
+ *               net_pay:
+ *                 type: number
+ *                 example: 450000
+ *     responses:
+ *       201:
+ *         description: Payslip created successfully
+ *       500:
+ *         description: Failed to create payslip
+ */
+router.post("/payslip/create",authMiddleware,  createPayslip);
 
 /**
  * @swagger
@@ -142,98 +188,102 @@ router.put("/runs/:id", authorizeRoles("super_admin", "authorization"), updatePa
  *     security:
  *       - bearerAuth: []
  *     parameters:
- *       - name: staffId
- *         in: query
+ *       - in: query
+ *         name: staffId
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: payrollRunId
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: page
  *         schema:
  *           type: integer
- *       - name: payrollRunId
- *         in: query
- *         schema:
- *           type: integer
- *       - name: page
- *         in: query
- *         schema:
- *           type: integer
- *       - name: limit
- *         in: query
+ *       - in: query
+ *         name: limit
  *         schema:
  *           type: integer
  *     responses:
  *       200:
  *         description: List of payslips
  */
-router.get("/payslips", authorizeRoles("super_admin", "authorization", "viewer"), getPayslips);
+router.get("/payslip/get",authMiddleware,  getPayslips);
 
 /**
  * @swagger
- * /payroll/payslips/{id}:
+ * /payroll/payslip/{id}:
  *   get:
  *     summary: Get payslip by ID
  *     tags: [Payroll]
  *     security:
  *       - bearerAuth: []
  *     parameters:
- *       - name: id
- *         in: path
+ *       - in: path
+ *         name: id
  *         required: true
  *         schema:
- *           type: integer
+ *           type: string
  *     responses:
  *       200:
  *         description: Payslip details
  *       404:
- *         description: Not found
+ *         description: Payslip not found
  */
-router.get("/payslips/:id", authorizeRoles("super_admin", "authorization", "viewer"), getPayslipById);
+router.get("/payslip/get/:id",authMiddleware,  getPayslipById);
 
 /**
  * @swagger
- * /payroll/payslips/{id}:
+ * /payroll/payslip/{id}:
  *   put:
- *     summary: Update payslip
+ *     summary: Update a payslip (e.g. after deductions or adjustments)
  *     tags: [Payroll]
  *     security:
  *       - bearerAuth: []
  *     parameters:
- *       - name: id
- *         in: path
+ *       - in: path
+ *         name: id
  *         required: true
  *         schema:
- *           type: integer
+ *           type: string
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
  *             type: object
+ *             example:
+ *               gross_pay: 550000
+ *               deductions: 50000
+ *               net_pay: 500000
  *     responses:
  *       200:
  *         description: Payslip updated
  *       404:
- *         description: Not found
+ *         description: Payslip not found
  */
-router.put("/payslips/:id", authorizeRoles("super_admin", "authorization"), updatePayslip);
+router.put("/payslip/update/:id",authMiddleware,  updatePayslip);
 
 /**
  * @swagger
- * /payroll/payslips/{id}/paid:
+ * /payroll/payslip/{id}/paid:
  *   patch:
- *     summary: Mark payslip as paid
+ *     summary: Mark a payslip as paid
  *     tags: [Payroll]
  *     security:
  *       - bearerAuth: []
  *     parameters:
- *       - name: id
- *         in: path
+ *       - in: path
+ *         name: id
  *         required: true
  *         schema:
- *           type: integer
+ *           type: string
  *     responses:
  *       200:
  *         description: Payslip marked as paid
  *       404:
- *         description: Not found
+ *         description: Payslip not found
  */
-router.patch("/payslips/:id/paid", authorizeRoles("super_admin", "authorization"), markPayslipPaid);
+router.patch("/payslip/paid/:id",authMiddleware,  markPayslipPaid);
 
 export default router;

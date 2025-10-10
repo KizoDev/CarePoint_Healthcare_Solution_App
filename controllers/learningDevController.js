@@ -61,7 +61,8 @@ export const enrollStaff = async (req, res) => {
       title: "Training Enrollment",
       message: "You have been enrolled in a course.",
       type: "learning",
-      staffId,
+      recipientId: req.user.id,
+      //recipientType: "hr",
     });
 
     // 🧾 Audit log

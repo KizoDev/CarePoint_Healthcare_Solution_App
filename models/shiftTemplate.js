@@ -1,12 +1,12 @@
 // models/ShiftTemplate.js
 export default (sequelize, DataTypes) => {
   const ShiftTemplate = sequelize.define("ShiftTemplate", {
-    id: {
+    templateId: {
       type: DataTypes.UUID,
       defaultValue: DataTypes.UUIDV4,
       primaryKey: true,
     },
-    client_id: {
+    clientId: {
       type: DataTypes.UUID,
       allowNull: false,
     },
@@ -28,7 +28,7 @@ export default (sequelize, DataTypes) => {
         "Friday",
         "Saturday"
       ),
-      allowNull: false,
+      allowNull: true,
     },
     recurrence: {
       type: DataTypes.ENUM("weekly", "biweekly", "monthly"),

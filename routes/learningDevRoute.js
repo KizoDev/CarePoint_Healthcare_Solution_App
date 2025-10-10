@@ -62,7 +62,7 @@ router.use(authMiddleware);
  *       500:
  *         description: Failed to create course
  */
-router.post("/courses", authorizeRoles("super_admin", "authorization"), createCourse);
+router.post("/create", authMiddleware, createCourse);
 
 /**
  * @swagger
@@ -78,7 +78,7 @@ router.post("/courses", authorizeRoles("super_admin", "authorization"), createCo
  *       500:
  *         description: Failed to fetch courses
  */
-router.get("/courses", authorizeRoles("super_admin", "authorization", "viewer", "scheduler"), getCourses);
+router.get("/courses", authMiddleware, getCourses);
 
 /**
  * @swagger
@@ -108,7 +108,7 @@ router.get("/courses", authorizeRoles("super_admin", "authorization", "viewer", 
  *       500:
  *         description: Failed to enroll staff
  */
-router.post("/enroll", authorizeRoles("super_admin", "authorization"), enrollStaff);
+router.post("/enroll",authMiddleware, enrollStaff);
 
 /**
  * @swagger
@@ -135,7 +135,7 @@ router.post("/enroll", authorizeRoles("super_admin", "authorization"), enrollSta
  *       500:
  *         description: Failed to fetch enrollments
  */
-router.get("/enroll", authorizeRoles("super_admin", "authorization", "viewer"), getEnrollments);
+router.get("/enroll",authMiddleware, getEnrollments);
 
 /**
  * @swagger
@@ -160,7 +160,7 @@ router.get("/enroll", authorizeRoles("super_admin", "authorization", "viewer"), 
  *       500:
  *         description: Failed to mark enrollment complete
  */
-router.patch("/enroll/:id/complete", authorizeRoles("super_admin", "authorization"), markEnrollmentComplete);
+router.patch("/enroll/:id/complete",authMiddleware, markEnrollmentComplete);
 
 /**
  * @swagger
@@ -185,6 +185,6 @@ router.patch("/enroll/:id/complete", authorizeRoles("super_admin", "authorizatio
  *       500:
  *         description: Failed to delete enrollment
  */
-router.delete("/enroll/:id", authorizeRoles("super_admin", "authorization"), deleteEnrollment);
+router.delete("/enroll/:id",authMiddleware, deleteEnrollment);
 
 export default router;
