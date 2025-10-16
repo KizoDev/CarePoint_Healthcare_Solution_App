@@ -238,8 +238,8 @@ export const updateStaff = async (req, res) => {
     await Notification.create({
       title: "Staff Updated",
       message: "Your staff profile has been updated.",
-      type: "staff",
-      staffId: staff.id,
+      type: "general",
+      recipientId : staff.id,
     });
 
     //  Save to AuditLog

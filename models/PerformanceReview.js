@@ -6,6 +6,10 @@ export default (sequelize, DataTypes) => {
       defaultValue: DataTypes.UUIDV4,
       primaryKey: true,
     },
+      staff_id: {
+    type: DataTypes.UUID,
+    allowNull: false,
+      },
     review_date: {
       type: DataTypes.DATE,
       defaultValue: DataTypes.NOW,

@@ -1,31 +1,33 @@
-// routes/performance.js
 import express from "express";
 import authMiddleware from "../middleware/authMiddleware.js";
 import {
-  createReview, getReviews, getReviewById, updateReview, deleteReview,
-  createGoal, updateGoal, deleteGoal
+  createReview,
+  getReviews,
+  getReviewById,
+  updateReview,
+  deleteReview,
+  createGoal,
+  updateGoal,
+  deleteGoal,
 } from "../controllers/performanceController.js";
 
 const router = express.Router();
-const authorizeRoles = (...roles) => (req, res, next) => {
-  if (!roles.includes(req.user?.role)) return res.status(403).json({ message: "Forbidden" });
-  next();
-};
 
+// 🔐 All routes require authentication
 router.use(authMiddleware);
 
 /**
  * @swagger
  * tags:
  *   name: Performance
- *   description: Employee performance management
+ *   description: Performance review and goal management (HR access only)
  */
 
 /**
  * @swagger
  * /performance/reviews:
  *   post:
- *     summary: Create a performance review
+ *     summary: Create a performance review (HR only)
  *     tags: [Performance]
  *     security:
  *       - bearerAuth: []
@@ -37,7 +39,8 @@ router.use(authMiddleware);
  *             type: object
  *             properties:
  *               staffId:
- *                 type: integer
+ *                 type: string
+ *                 format: uuid
  *               score:
  *                 type: number
  *               comments:
@@ -47,73 +50,76 @@ router.use(authMiddleware);
  *                 format: date
  *     responses:
  *       201:
- *         description: Review created
+ *         description: Review created successfully
  */
-router.post("/reviews", authorizeRoles("super_admin", "authorization"), createReview);
+router.post("/reviews",authMiddleware, createReview);
 
 /**
  * @swagger
  * /performance/reviews:
  *   get:
- *     summary: Get all performance reviews
+ *     summary: Get all performance reviews (HR only)
  *     tags: [Performance]
  *     security:
  *       - bearerAuth: []
  *     parameters:
- *       - name: staffId
- *         in: query
+ *       - in: query
+ *         name: staffId
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *       - in: query
+ *         name: page
  *         schema:
  *           type: integer
- *       - name: page
- *         in: query
- *         schema:
- *           type: integer
- *       - name: limit
- *         in: query
+ *       - in: query
+ *         name: limit
  *         schema:
  *           type: integer
  *     responses:
  *       200:
  *         description: List of reviews
  */
-router.get("/reviews", authorizeRoles("super_admin", "authorization", "viewer", "scheduler"), getReviews);
+router.get("/reviews",authMiddleware, getReviews);
 
 /**
  * @swagger
  * /performance/reviews/{id}:
  *   get:
- *     summary: Get review by ID
+ *     summary: Get a specific performance review by ID
  *     tags: [Performance]
  *     security:
  *       - bearerAuth: []
  *     parameters:
- *       - name: id
- *         in: path
+ *       - in: path
+ *         name: id
  *         required: true
  *         schema:
- *           type: integer
+ *           type: string
+ *           format: uuid
  *     responses:
  *       200:
  *         description: Review details
  *       404:
- *         description: Not found
+ *         description: Review not found
  */
-router.get("/reviews/:id", authorizeRoles("super_admin", "authorization", "viewer", "scheduler"), getReviewById);
+router.get("/reviews/:id",authMiddleware, getReviewById);
 
 /**
  * @swagger
  * /performance/reviews/{id}:
  *   put:
- *     summary: Update a review
+ *     summary: Update a performance review (HR only)
  *     tags: [Performance]
  *     security:
  *       - bearerAuth: []
  *     parameters:
- *       - name: id
- *         in: path
+ *       - in: path
+ *         name: id
  *         required: true
  *         schema:
- *           type: integer
+ *           type: string
+ *           format: uuid
  *     requestBody:
  *       required: true
  *       content:
@@ -126,35 +132,36 @@ router.get("/reviews/:id", authorizeRoles("super_admin", "authorization", "viewe
  *       404:
  *         description: Not found
  */
-router.put("/reviews/:id", authorizeRoles("super_admin", "authorization"), updateReview);
+router.put("/reviews/:id",authMiddleware, updateReview);
 
 /**
  * @swagger
  * /performance/reviews/{id}:
  *   delete:
- *     summary: Delete a review
+ *     summary: Delete a performance review (HR only)
  *     tags: [Performance]
  *     security:
  *       - bearerAuth: []
  *     parameters:
- *       - name: id
- *         in: path
+ *       - in: path
+ *         name: id
  *         required: true
  *         schema:
- *           type: integer
+ *           type: string
+ *           format: uuid
  *     responses:
  *       200:
  *         description: Review deleted
  *       404:
  *         description: Not found
  */
-router.delete("/reviews/:id", authorizeRoles("super_admin"), deleteReview);
+router.delete("/reviews/:id",authMiddleware, deleteReview);
 
 /**
  * @swagger
  * /performance/goals:
  *   post:
- *     summary: Create a goal
+ *     summary: Create a new goal (HR only)
  *     tags: [Performance]
  *     security:
  *       - bearerAuth: []
@@ -166,7 +173,8 @@ router.delete("/reviews/:id", authorizeRoles("super_admin"), deleteReview);
  *             type: object
  *             properties:
  *               staffId:
- *                 type: integer
+ *                 type: string
+ *                 format: uuid
  *               description:
  *                 type: string
  *               target_date:
@@ -174,58 +182,50 @@ router.delete("/reviews/:id", authorizeRoles("super_admin"), deleteReview);
  *                 format: date
  *     responses:
  *       201:
- *         description: Goal created
+ *         description: Goal created successfully
  */
-router.post("/goals", authorizeRoles("super_admin", "authorization"), createGoal);
+router.post("/goals",authMiddleware, createGoal);
 
 /**
  * @swagger
  * /performance/goals/{id}:
  *   put:
- *     summary: Update a goal
+ *     summary: Update an existing goal (HR only)
  *     tags: [Performance]
  *     security:
  *       - bearerAuth: []
  *     parameters:
- *       - name: id
- *         in: path
+ *       - in: path
+ *         name: id
  *         required: true
  *         schema:
- *           type: integer
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
+ *           type: string
+ *           format: uuid
  *     responses:
  *       200:
  *         description: Goal updated
- *       404:
- *         description: Not found
  */
-router.put("/goals/:id", authorizeRoles("super_admin", "authorization"), updateGoal);
+router.put("/goals/:id",authMiddleware, updateGoal);
 
 /**
  * @swagger
  * /performance/goals/{id}:
  *   delete:
- *     summary: Delete a goal
+ *     summary: Delete a goal (HR only)
  *     tags: [Performance]
  *     security:
  *       - bearerAuth: []
  *     parameters:
- *       - name: id
- *         in: path
+ *       - in: path
+ *         name: id
  *         required: true
  *         schema:
- *           type: integer
+ *           type: string
+ *           format: uuid
  *     responses:
  *       200:
  *         description: Goal deleted
- *       404:
- *         description: Not found
  */
-router.delete("/goals/:id", authorizeRoles("super_admin"), deleteGoal);
+router.delete("/goals/:id",authMiddleware, deleteGoal);
 
 export default router;
