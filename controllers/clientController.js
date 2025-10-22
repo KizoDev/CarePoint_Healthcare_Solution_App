@@ -8,9 +8,14 @@ export const createClient = async (req, res) => {
   if (role !== "HR_admin") {
     return res.status(401).json({ message: "You are not allowed to access this route" });
   }
-
+    const { name, email, contact_info,address } = req.body;
   try {
-    const client = await Client.create(req.body);
+    const client = await Client.create({
+      name, 
+      email, 
+      contact_info,
+      address
+    });
 
     // Audit log
     await AuditLog.create({
@@ -90,7 +95,7 @@ export const updateClient = async (req, res) => {
         title: "Client Updated",
         message: `Client ${updatedClient.name} was updated.`,
         type: "client",
-        staffId,
+        recipientId :staffId,
       });
       if (io) {
         io.to(`user_${staffId}`).emit("clientUpdated", {

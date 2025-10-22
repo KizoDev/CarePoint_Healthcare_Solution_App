@@ -17,18 +17,19 @@ export default (sequelize, DataTypes) => {
     },
     contact_info: {
       type: DataTypes.STRING,
-      allowNull: true,
+      allowNull: false,
     },
     address: {
       type: DataTypes.STRING,
-      allowNull: true,
+      allowNull: false,
     },
     status: { type: DataTypes.ENUM("Discharged", "Under Treatment", "Deceased"),
-    defaultValue: "Under Treatment" 
+    defaultValue: "Under Treatment" ,
     },
  
    careLevel: { type: DataTypes.ENUM("high", "low","critical"),
     defaultValue: "high" },
+     
   }, 
    {
     timestamps: true,

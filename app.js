@@ -113,7 +113,10 @@ app.use("/jobPosting", jobPostingRoute);
 
 // Swagger UI
 //app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+// Allow Swagger docs before anything else
+app.use("/api-docs", (req, res, next) => next());
 
+// Swagger UI
 const client_url = process.env.CLIENT_URL || "http://localhost:5000";
 swaggerDocs(app, client_url);
 

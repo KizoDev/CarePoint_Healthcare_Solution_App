@@ -229,7 +229,7 @@ export const updateStaff = async (req, res) => {
     // 🔔 Notify staff
     const io = req.app.get("io");
     if (io) {
-      io.to(`user_${staff.id}`).emit("staffUpdated", {
+      io.to(`user_${staff.staffId}`).emit("staffUpdated", {
         message: "Your staff profile has been updated",
         staff,
       });
@@ -239,7 +239,7 @@ export const updateStaff = async (req, res) => {
       title: "Staff Updated",
       message: "Your staff profile has been updated.",
       type: "general",
-      recipientId : staff.id,
+      recipientId : staff.staffId,
     });
 
     //  Save to AuditLog
