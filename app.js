@@ -47,19 +47,32 @@ const whiteList = [
   "http://localhost:3000",
 ];
 
+// const corsOptions = {
+//   origin: function (origin, callback) {
+//     if (whiteList.indexOf(origin) !== -1 || !origin) {
+//       callback(null, true);
+//     } else {
+//       callback(new Error("Not allowed by CORS"));
+//     }
+//   },
+//   methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
+//   credentials: true,
+//   allowedHeaders: "Content-Type,Authorization",
+// };
 const corsOptions = {
-  origin: function (origin, callback) {
-    if (whiteList.indexOf(origin) !== -1 || !origin) {
+  origin: (origin, callback) => {
+    if (!origin || whiteList.includes(origin)) {
       callback(null, true);
     } else {
+      console.error("❌ CORS blocked for origin:", origin);
       callback(new Error("Not allowed by CORS"));
     }
   },
-  methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
   credentials: true,
-  allowedHeaders: "Content-Type,Authorization",
+  optionsSuccessStatus: 200,
 };
-
 // Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
