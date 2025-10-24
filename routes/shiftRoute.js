@@ -37,7 +37,7 @@ router.use(authMiddleware);
  *       200:
  *         description: List of all shifts
  */
-router.get("/all", getAllShifts);
+router.get("/all",authMiddleware, getAllShifts);
 
 /**
  * @swagger
@@ -74,7 +74,7 @@ router.get("/all", getAllShifts);
  *       200:
  *         description: Filtered list of shifts
  */
-router.get("/get", filterShifts);
+router.get("/get",authMiddleware, filterShifts);
 
 /**
  * @swagger
@@ -96,7 +96,7 @@ router.get("/get", filterShifts);
  *       404:
  *         description: Shift not found
  */
-router.get("/get/:id", getSingleShift);
+router.get("/get/:id",authMiddleware, getSingleShift);
 
 /**
  * @swagger
@@ -129,7 +129,7 @@ router.get("/get/:id", getSingleShift);
  *       201:
  *         description: Shift created successfully
  */
-router.post("/create", createShift);
+router.post("/create", authMiddleware,createShift);
 
 /**
  * @swagger
@@ -157,7 +157,7 @@ router.post("/create", createShift);
  *       404:
  *         description: Shift not found
  */
-router.put("/:id", updateShift);
+router.put("/:id", authMiddleware,updateShift);
 
 /**
  * @swagger
@@ -179,7 +179,7 @@ router.put("/:id", updateShift);
  *       404:
  *         description: Shift not found
  */
-router.delete("/:id", deleteShift);
+router.delete("/:id", authMiddleware, deleteShift);
 
 /**
  * @swagger
@@ -206,8 +206,7 @@ router.delete("/:id", deleteShift);
  *       404:
  *         description: Shift not found
  */
-router.post("/assign",roleMiddleware(["super_admin", "scheduler"]),
-  assignStaffToShift
+router.post("/assign",authMiddleware, assignStaffToShift
 );
 /**
  * @swagger

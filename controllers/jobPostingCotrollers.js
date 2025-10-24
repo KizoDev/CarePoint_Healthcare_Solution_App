@@ -98,11 +98,11 @@ export const updateJobPosting = async (req, res) => {
     const io = req.app.get("io");
     if (io) io.emit("recruitment:jobUpdated", { message: `Job updated: ${posting.title}` });
 
-    await Notification.create({
-      title: "Job Posting Updated",
-      message: `The job "${posting.title}" has been updated.`,
-      type: "recruitment",
-    });
+    // await Notification.create({
+    //   title: "Job Posting Updated",
+    //   message: `The job "${posting.title}" has been updated.`,
+    //   type: "recruitment",
+    // });
 
     res.json({ message: "Job posting updated successfully", posting });
   } catch (error) {
@@ -135,11 +135,11 @@ export const closeJobPosting = async (req, res) => {
     const io = req.app.get("io");
     if (io) io.emit("recruitment:jobClosed", { message: `Job closed: ${posting.title}` });
 
-    await Notification.create({
-      title: "Job Posting Closed",
-      message: `The job "${posting.title}" has been closed.`,
-      type: "recruitment",
-    });
+    // await Notification.create({
+    //   title: "Job Posting Closed",
+    //   message: `The job "${posting.title}" has been closed.`,
+    //   type: "recruitment",
+    // });
 
     res.json({ message: "Job posting closed successfully", posting });
   } catch (error) {
