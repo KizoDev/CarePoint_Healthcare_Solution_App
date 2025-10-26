@@ -39,7 +39,7 @@ let mailTransporter = nodemailer.createTransport({
 export const inviteStaff = async (req, res) => {
   try {
     const role = req.user.role;
-    if (role !== "HR_admin") {
+    if (role !== "HR_admin" && role !== "Super_admin") {
       return res.status(401).json({ message: 'You are not allowed to access this route' });
     }
 
@@ -164,7 +164,7 @@ export const loginStaff = async (req, res) => {
 // Get all staff with pagination
 export const getAllStaff = async (req, res) => {
   const role = req.user.role;
-  if (role !== "HR_admin") {
+  if (role !== "HR_admin" && role !== "Super_admin") {
     return res.status(401).json({ message: "You are not allowed to access this route" });
   }
 
@@ -198,7 +198,7 @@ export const getAllStaff = async (req, res) => {
 // Get a single staff by ID
 export const getSingleStaff = async (req, res) => {
   const role = req.user.role;
-  if (role !== "HR_admin") {
+  if (role !== "HR_admin" && role !== "Super_admin") {
     return res.status(401).json({ message: "You are not allowed to access this route" });
   }
 
@@ -216,7 +216,7 @@ export const getSingleStaff = async (req, res) => {
 // Update staff profile
 export const updateStaff = async (req, res) => {
   const role = req.user.role;
-  if (role !== "HR_admin") {
+  if (role !== "HR_admin" && role !== "Super_admin") {
     return res.status(401).json({ message: "You are not allowed to access this route" });
   }
 
@@ -260,7 +260,7 @@ export const updateStaff = async (req, res) => {
 // Delete staff
 export const deleteStaff = async (req, res) => {
   const role = req.user.role;
-  if (role !== "HR_admin") {
+  if (role !== "HR_admin" && role !== "Super_admin") {
     return res.status(401).json({ message: "You are not allowed to access this route" });
   }
 
@@ -290,7 +290,7 @@ export const updatePermissions = async (req, res) => {
   try {
     // ✅ Ensure only HR_admin can update permissions
     const role = req.user.role;
-    if (role !== "HR_admin") {
+    if (role !== "HR_admin" && role !== "Super_admin") {
       return res.status(401).json({ message: "You are not allowed to access this route" });
     }
 

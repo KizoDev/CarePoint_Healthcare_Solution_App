@@ -5,7 +5,7 @@ const { Client, Shift, Notification, AuditLog } = db;
 // Create a new client
 export const createClient = async (req, res) => {
   const role = req.user.role;
-  if (role !== "HR_admin") {
+  if (role !== "HR_admin" && role !== "Super_admin") {
     return res.status(401).json({ message: "You are not allowed to access this route" });
   }
     const { name, email, contact_info,address } = req.body;
@@ -35,7 +35,7 @@ export const createClient = async (req, res) => {
 // Get all clients
 export const getClients = async (req, res) => {
   const role = req.user.role;
-  if (role !== "HR_admin") {
+  if (role !== "HR_admin" && role !== "Super_admin") {
     return res.status(401).json({ message: "You are not allowed to access this route" });
   }
 
@@ -51,7 +51,7 @@ export const getClients = async (req, res) => {
 // Get a single client by ID
 export const getSingleClient = async (req, res) => {
   const role = req.user.role;
-  if (role !== "HR_admin") {
+  if (role !== "HR_admin" && role !== "Super_admin") {
     return res.status(401).json({ message: "You are not allowed to access this route" });
   }
 
@@ -69,7 +69,7 @@ export const getSingleClient = async (req, res) => {
 // Update a client's information
 export const updateClient = async (req, res) => {
   const role = req.user.role;
-  if (role !== "HR_admin") {
+  if (role !== "HR_admin" && role !== "Super_admin") {
     return res.status(401).json({ message: "You are not allowed to access this route" });
   }
 
@@ -122,7 +122,7 @@ export const updateClient = async (req, res) => {
 // Delete a client
 export const deleteClient = async (req, res) => {
   const role = req.user.role;
-  if (role !== "HR_admin") {
+  if (role !== "HR_admin" && role !== "Super_admin") {
     return res.status(401).json({ message: "You are not allowed to access this route" });
   }
 
@@ -170,7 +170,7 @@ export const deleteClient = async (req, res) => {
 // Get client's shift history
 export const getClientShiftHistory = async (req, res) => {
   const role = req.user.role;
-  if (role !== "HR_admin") {
+  if (role !== "HR_admin" && role !== "Super_admin") {
     return res.status(401).json({ message: "You are not allowed to access this route" });
   }
 
